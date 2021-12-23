@@ -25,8 +25,8 @@ def sos(batch_size, sos_idx):  # [batch_size, 1]
 
 class Decoder(nn.Module):
 
-    def __init__(self, n_vocab, seq_len, d_model, n_head, d_k,
-                 h_layers, d_layers, pad_idx=0, dropout=0.1, n_position=256):
+    def __init__(self, n_vocab, seq_len, d_model, n_head, d_k, h_layers, d_layers,
+                 pad_idx=0, dropout=0.1, d_ffn=None, n_position=256):
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(n_vocab, d_model, padding_idx=pad_idx)
         self.pos_enc = attention.PositionalEncoding(d_model, n_position)
@@ -34,15 +34,15 @@ class Decoder(nn.Module):
         self.norm = nn.LayerNorm(d_model)
         self.h_decoders = nn.ModuleList([
             attention.DecodeLayer(
-                d_model, n_head, d_k, dropout=dropout) for _ in range(h_layers)
+                d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(h_layers)
         ])
         self.c_decoders = nn.ModuleList([
             attention.DecodeLayer(
-                d_model, n_head, d_k, dropout=dropout) for _ in range(d_layers)
+                d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(d_layers)
         ])
         self.b_decoders = nn.ModuleList([
             attention.DecodeLayer(
-                d_model, n_head, d_k, dropout=dropout) for _ in range(d_layers)
+                d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(d_layers)
         ])
         self.cls_fc = nn.Linear(d_model, n_vocab, bias=False)
         self.box_fc = nn.Linear(d_model, 4)

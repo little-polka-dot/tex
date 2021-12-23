@@ -13,6 +13,7 @@ TEX_STRUCTURE_SETTINGS = {
     'dec_d_k': 128,
     'dec_h_layers': 5,
     'dec_d_layers': 1,
+    'dec_d_ffn': 1024,
     'dec_dropout': 0.1,
     'dec_n_position': 256,  # 须大于等于dec_seq_len
 }

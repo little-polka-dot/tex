@@ -36,6 +36,7 @@ class TexStructure(nn.Module):
             h_layers=get('dec_h_layers'),
             d_layers=get('dec_d_layers'),
             pad_idx=get('pad_idx'),
+            d_ffn=get('dec_d_ffn'),
             dropout=get('dec_dropout'),
             n_position=get('dec_n_position')
         )
