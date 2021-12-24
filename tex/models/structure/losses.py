@@ -1,5 +1,4 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
@@ -34,7 +33,7 @@ def jaccard(box_a, box_b):
         A ∩ B / A ∪ B = A ∩ B / (area(A) + area(B) - A ∩ B)
     Args:
         box_a: (tensor) Ground truth bounding boxes, Shape: [A,4]
-        box_b: (tensor) Prior boxes from priorbox layers, Shape: [B,4]
+        box_b: (tensor) Prior boxes from prior box layers, Shape: [B,4]
     Return:
         jaccard overlap: (tensor) Shape: [A, B]
     """
@@ -48,7 +47,8 @@ def jaccard(box_a, box_b):
     return inter / union  # [A,B]
 
 
-def box_transformer(x, reverse=False, inplace=False):
+def box_transformer(
+        x, reverse=False, inplace=False):
     """
     reverse = False
         x, y, w, h -> x_min, y_min, x_max, y_max
@@ -119,8 +119,3 @@ if __name__ == '__main__':
     )
     print(b[0].size(), b[1].size())
     print(structure_loss(a, b))
-
-    print()
-
-
-
