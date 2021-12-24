@@ -50,9 +50,12 @@ def jaccard(box_a, box_b):
 
 def box_transformer(x, reverse=False, inplace=False):
     """
-    reverse=False x, y, w, h -> x_min, y_min, x_max, y_max
+    reverse = False
+        x, y, w, h -> x_min, y_min, x_max, y_max
+    else
+        x_min, y_min, x_max, y_max -> x, y, w, h
     """
-    x = x if inplace else x.clone()
+    if not inplace: x = x.clone()
     if reverse:
         x[:, 2] = x[:, 2] - x[:, 0]
         x[:, 3] = x[:, 3] - x[:, 1]
@@ -60,6 +63,14 @@ def box_transformer(x, reverse=False, inplace=False):
         x[:, 2] = x[:, 2] + x[:, 0]
         x[:, 3] = x[:, 3] + x[:, 1]
     return x
+
+
+def target_masked(x):
+    """
+    input: (x_min, y_min, x_max, y_max) 忽略面积为0的行
+    """
+    return x / (((x[:, 3] - x[:, 1]) * (x[:, 2] - x[:, 0])) != 0) \
+        .unsqueeze(-1).expand(x.size(0), x.size(1))
 
 
 def iou_loss(outputs, targets, is_transformer=True):
@@ -71,8 +82,8 @@ def iou_loss(outputs, targets, is_transformer=True):
         if is_transformer:
             target = box_transformer(target)  # [seq_len, 4]
             output = box_transformer(output)  # [seq_len, 4]
-        iou = torch.diag(jaccard(target, output))  # [seq_len]
-        print(iou)  # TODO: 需要忽略掉target为[0, 0, 0, 0]的行
+        iou = torch.diag(
+            jaccard(target_masked(target), output))  # [seq_len]
         yield torch.nanmean(-torch.log(iou))
 
 
@@ -86,7 +97,7 @@ def cls_loss(outputs, targets, pad_idx=0, smoothing=0.1):
 def structure_loss(
         outputs, targets, is_transformer=True, pad_idx=0, smoothing=0.1):
     # outputs tuple([batch_size, seq_len, dim], [batch_size, seq_len, 4])
-    # targets tuple([batch_size, seq_len],      [batch_size, seq_len, 4])
+    # targets tuple([batch_size, seq_len], [batch_size, seq_len, 4])
     cls_output, box_output = outputs
     cls_target, box_target = targets
     cls_loss_value = list(cls_loss(cls_output, cls_target, pad_idx, smoothing))
@@ -104,10 +115,12 @@ if __name__ == '__main__':
     print(a[0].size(), a[1].size())
     b = (
         torch.randint(9, [1, 3]),
-        torch.tensor(np.array([[[1, 1, 2, 2], [2, 2, 6, 6], [0, 0, 0, 0]]]))
+        torch.tensor(np.array([[[1, 1, 2, 2], [2, 2, 6, 6], [1, 1, 0, 0]]]))
     )
     print(b[0].size(), b[1].size())
     print(structure_loss(a, b))
+
+    print()
 
 
 
