@@ -7,7 +7,7 @@ def build_structure():
             'd_input': 1,  # encoder输入图层数
             'd_model': 512,  # encoder输出图层数
             'layers': [3, 4, 6, 3],
-            'block': 'BasicBlock',
+            'block': 'CoTBlock',
             'n_position': 4096,  # 须大于等于图像卷积后的size
         },
         decoder={

@@ -2,7 +2,7 @@ import torch.nn as nn
 from tex.models.structure.encoder import Encoder
 from tex.models.structure.decoder import Decoder
 from tex.models.structure.decoder.attention import PositionalEncoding
-from tex.models.structure.encoder import resnet
+from tex.models.structure.encoder import residual
 
 
 class TexStructure(nn.Module):
