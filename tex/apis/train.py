@@ -1,19 +1,21 @@
-from tex.models.structure import TexStructure
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from tex.models import builder
 
 
-def build_structure(cfg):
-    return TexStructure(encoder=cfg['encoder'], decoder=cfg['decoder'])
+def train_structure(cfg, device_ids=None):
+
+    net = builder.build_structure(cfg)
+    if device_ids:
+        if len(device_ids) > 1:
+            net = nn.DataParallel(net, device_ids=device_ids)
+        else:
+            net = net.to(device_ids[0])
 
 
 if __name__ == '__main__':
-    import torch
-    from tex.models.structure.decoder import sos
-    batch_size = 1
-    sos_idx = 1
-    pad_idx = 0
-    enc_x = torch.randn((batch_size, 1, 224, 224), dtype=torch.float)
-    dec_x = sos(batch_size, sos_idx)
-    net = build_structure({
+    structure_cfg = {
         'encoder': {
             'd_input': 1,  # encoder输入图层数
             'd_model': 512,  # encoder输出图层数
@@ -34,8 +36,5 @@ if __name__ == '__main__':
             'n_position': 256,  # 须大于等于seq_len
             'pad_idx': 0,
         }
-    })
-    net.eval()
-    cls_x, box_x = net(enc_x, dec_x)
-    print(cls_x.size())
-    print(box_x.size())
+    }
+    train_structure(structure_cfg)
