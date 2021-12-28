@@ -1,6 +1,5 @@
 import torch
 import torch.nn.functional as F
-import numpy as np
 
 
 def intersect(box_a, box_b):
@@ -67,10 +66,12 @@ def box_transformer(
 
 def target_masked(x):
     """
-    input: (x_min, y_min, x_max, y_max) 忽略面积为0的行
+    input: (x_min, y_min, x_max, y_max) 忽略无效面积的行
+    [[0, 0, 0, 0]] -> [[nan, nan, nan, nan]]
     """
-    return x / (((x[:, 3] - x[:, 1]) * (x[:, 2] - x[:, 0])) != 0) \
-        .unsqueeze(-1).expand(x.size(0), x.size(1))
+    area = (x[:, 3]-x[:, 1]) * (x[:, 2]-x[:, 0])
+    mask = (area > 0).unsqueeze(-1).expand_as(x) == False
+    return x.masked_fill(mask, torch.nan)
 
 
 def iou_loss(outputs, targets, is_transformer=True):
@@ -110,12 +111,12 @@ def structure_loss(
 if __name__ == '__main__':
     a = (
         torch.randn([1, 3, 9]),
-        torch.tensor(np.array([[[1, 1, 2, 2], [2, 2, 2, 2], [1, 1, 1, 1]]]))
+        torch.tensor([[[1, 1, 2, 2], [2, 2, 2, 2], [1, 1, 1, 1]]], dtype=torch.float64)
     )
     print(a[0].size(), a[1].size())
     b = (
         torch.randint(9, [1, 3]),
-        torch.tensor(np.array([[[1, 1, 2, 2], [2, 2, 6, 6], [1, 1, 0, 0]]]))
+        torch.tensor([[[1, 1, 2, 2], [2, 2, 6, 6], [1, 1, 0, torch.nan]]], dtype=torch.float64)
     )
     print(b[0].size(), b[1].size())
     print(structure_loss(a, b))

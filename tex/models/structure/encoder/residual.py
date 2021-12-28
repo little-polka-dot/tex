@@ -7,28 +7,28 @@ class Block(nn.Module):
 
     expansion = 1
 
-    def __init__(self, in_planes, planes, stride=(1, 1), downsample=True, sub=None):
+    def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
         super(Block, self).__init__()
-        self.sub = sub
-        if downsample:
+        assert stride[0] > 0 and stride[1] > 0
+        self.sub_method = sub
+        self.downsample = None
+        if (stride[0] > 1 or stride[1] > 1) or (in_planes != planes * self.expansion):
             self.downsample = nn.Sequential(
                 nn.Conv2d(
                     in_planes, planes * self.expansion, (1, 1), stride=stride, bias=False),
                 nn.BatchNorm2d(planes * self.expansion),
             )
-        else:
-            self.downsample = None
 
-    def forward(self, x):
-        # net采用pre-activation机制
+    def forward(self, x):  # pre-activation
         def _call(v, func=None): return func(v) if callable(func) else v
-        return _call(self.net(x), self.sub) + _call(x, self.downsample)
+        return _call(
+            self.net(x), self.sub_method) + _call(x, self.downsample)
 
 
 class BasicBlock(Block):
 
-    def __init__(self, in_planes, planes, stride=(1, 1), downsample=True, sub=None):
-        super(BasicBlock, self).__init__(in_planes, planes, stride, downsample, sub)
+    def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
+        super(BasicBlock, self).__init__(in_planes, planes, stride, sub)
         self.net = nn.Sequential(
             nn.BatchNorm2d(in_planes),
             nn.ReLU(inplace=True),
@@ -43,8 +43,8 @@ class Bottleneck(Block):
 
     expansion = 4
 
-    def __init__(self, in_planes, planes, stride=(1, 1), downsample=True, sub=None):
-        super(Bottleneck, self).__init__(in_planes, planes, stride, downsample, sub)
+    def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
+        super(Bottleneck, self).__init__(in_planes, planes, stride, sub)
         self.net = nn.Sequential(
             nn.BatchNorm2d(in_planes),
             nn.ReLU(inplace=True),
@@ -60,24 +60,22 @@ class Bottleneck(Block):
 
 def make_layer(layers: int, block: Type[Block], in_planes, planes, stride=(1, 1), sub=None):
     return nn.Sequential(
-        block(
-            in_planes, planes, stride=stride, downsample=True, sub=sub
-        ),
+        block(in_planes, planes, stride=stride, sub=sub),
         *[
             block(
-                planes * block.expansion, planes, downsample=False, sub=sub
+                planes * block.expansion, planes, sub=sub
             ) for _ in range(1, layers)
         ]
     )
 
 
-class CoTAttention(nn.Module):
+class ContextualAttention(nn.Module):
 
     def __init__(self, d_model, d_hidden, kernel_size=(3, 3), padding=(1, 1), alpha=9):
-        super(CoTAttention, self).__init__()
+        super(ContextualAttention, self).__init__()
         self.alpha = alpha
-        self.key_mapping = nn.Sequential(
-            nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),  # TODO: groups?
+        self.key_mapping = nn.Sequential(  # TODO: why groups
+            nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),
             nn.BatchNorm2d(d_model),
             nn.ReLU(inplace=True)
         )
@@ -102,13 +100,13 @@ class CoTAttention(nn.Module):
         return k_1 + k_2.view(*x.size())  # bs,c,h,w
 
 
-class CoTBlock(Block):
+class ContextualBlock(Block):
 
     expansion = 4
 
-    def __init__(self, in_planes, planes, stride=(1, 1), downsample=True, sub=None):
-        super(CoTBlock, self).__init__(in_planes, planes, stride, downsample, sub)
-        if stride[0] * stride[1] > 1:
+    def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
+        super(ContextualBlock, self).__init__(in_planes, planes, stride, sub)
+        if stride[0] > 1 or stride[1] > 1:
             self.net = nn.Sequential(
                 nn.BatchNorm2d(in_planes),
                 nn.ReLU(inplace=True),
@@ -116,7 +114,7 @@ class CoTBlock(Block):
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
                 nn.AvgPool2d((3, 3), stride, padding=(1, 1)),
-                CoTAttention(planes, planes, (3, 3), padding=(1, 1)),
+                ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(planes, planes * self.expansion, (1, 1)),
@@ -128,30 +126,14 @@ class CoTBlock(Block):
                 nn.Conv2d(in_planes, planes, (1, 1)),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
-                CoTAttention(planes, planes, (3, 3), padding=(1, 1)),
+                ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(planes, planes * self.expansion, (1, 1)),
             )
 
 
-class MaskedBlock(nn.Module):
-
-    def __init__(self, in_planes, planes, h, w):
-        super(MaskedBlock, self).__init__()
-        self.row_conv = nn.Conv2d(in_planes, planes, (1, w))
-        self.col_conv = nn.Conv2d(in_planes, planes, (h, 1))
-
-    def forward(self, x):
-        row = torch.sigmoid(self.row_conv(x))
-        col = torch.sigmoid(self.col_conv(x))
-        return x + torch.matmul(row, col)
-
-
 if __name__ == '__main__':
-    # net = CoTBlock(64, 32, (1, 1), True)
-    # i = torch.randn((10, 64, 56, 56))
-    # print(net(i).size())
-    net = MaskedBlock(3, 3, 6, 9)
-    i = torch.randn((10, 3, 6, 9))
+    net = ContextualBlock(64, 32, (2, 2))
+    i = torch.randn((10, 64, 56, 56))
     print(net(i).size())

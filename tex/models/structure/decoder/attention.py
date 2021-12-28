@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 import torch.nn as nn
 
@@ -18,7 +17,7 @@ class ScaledDotProductAttention(nn.Module):
         score = torch.matmul(
             query, key.transpose(-2, -1)) / (key.size(-1) ** 0.5)
         if mask is not None:
-            score = score.masked_fill(mask == 0, -np.inf)
+            score = score.masked_fill(mask == 0, -torch.inf)
         attn = self.dropout(torch.softmax(score, dim=-1))
         return torch.matmul(attn, value), attn
 
@@ -124,53 +123,33 @@ class PositionalEncoding(nn.Module):
             self._get_sinusoid_encoding_table(n_position, d_feature)
         )
 
-    @staticmethod
-    def _get_sinusoid_encoding_table(n_position, d_feature):
+    @classmethod
+    def _denominator(cls, d_feature):
+        def _value(hid_j):
+            return torch.tensor(1) / torch.pow(torch.tensor(10000), torch.tensor(2 * (hid_j // 2) / d_feature))
+        return torch.tensor([_value(hid_j) for hid_j in range(d_feature)]).view(1, -1)
+
+    @classmethod
+    def _position(cls, n_position):
+        return torch.arange(n_position).unsqueeze(-1)
+
+    @classmethod
+    def _sinusoid_table(cls, n_position, d_feature):
+        return cls._position(n_position) * cls._denominator(d_feature)
+
+    @classmethod
+    def _get_sinusoid_encoding_table(cls, n_position, d_feature):
         """Sinusoid position encoding table."""
-        denominator = torch.Tensor([1.0 / np.power(
-            10000, 2 * (hid_j // 2) / d_feature) for hid_j in range(d_feature)]).view(1, -1)
-        pos_tensor = torch.arange(n_position, dtype=torch.double).unsqueeze(-1).float()
-        sinusoid_table = pos_tensor * denominator
+        sinusoid_table = cls._sinusoid_table(n_position, d_feature)
         sinusoid_table[:, 0::2] = torch.sin(sinusoid_table[:, 0::2])
         sinusoid_table[:, 1::2] = torch.cos(sinusoid_table[:, 1::2])
-        return sinusoid_table.unsqueeze(-3)  # [1, n_position, d_feature]
+        return sinusoid_table.unsqueeze(0)  # [1, n_position, d_feature]
 
     def forward(self, x):
         return x + self.position_table[:, :x.size(1)].clone().detach()
 
 
 if __name__ == '__main__':
-    # batch_size = 10
-    # seq_len = 5
-    # d_model = 6
-    # q = torch.tensor(np.random.random([batch_size, seq_len, d_model]), dtype=torch.float32)
-    # k = torch.tensor(np.random.random([batch_size, seq_len, d_model]), dtype=torch.float32)
-    # v = torch.tensor(np.random.random([batch_size, seq_len, d_model]), dtype=torch.float32)
-    # n_head = 3
-    # d_k = 8
-    # mask = torch.tensor(np.zeros([batch_size, seq_len, 1]))
-    # m = MultiHeadAttention(d_model, n_head, d_k)
-    # print(m(q, k, v, mask)[0].size())
-
-    # print((1 - torch.triu(torch.ones((1, 5, 5)), diagonal=1)).bool())
-
-    m = PositionalEncoding(10, 6)  # n_position, d_hidden
-    print(m(torch.tensor(np.zeros([1, 10, 6]))))
-
-    # batch_size = 10
-    # seq_len = 5
-    # dim_model = 6
-    # dim_hidden = 8
-    # n_header = 3
-    # dim_k = 4
-    # input_0 = torch.tensor(np.random.random([batch_size, seq_len, dim_model]), dtype=torch.float32)
-    # input_1 = torch.tensor(np.random.random([batch_size, seq_len, dim_model]), dtype=torch.float32)
-    # mask_0 = torch.tensor(np.zeros([batch_size, seq_len, 1]))
-    # mask_1 = torch.tensor(np.zeros([batch_size, seq_len, 1]))
-    # decoder = DecodeLayer(dim_model, dim_hidden, n_header, dim_k)
-    # print(decoder(input_0, input_1, mask_0, mask_1).size())
-
-
-
-
-
+    n = PositionalEncoding(16, 100)
+    xi = torch.zeros((1, 10, 16))
+    print(n(xi))
