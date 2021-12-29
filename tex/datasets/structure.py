@@ -4,9 +4,9 @@ import cv2
 import json
 
 
-class StructureDataset(Dataset):
+class SimpleStructureDataset(Dataset):
 
-    def __init__(self, dataset_path, transform=None):
+    def __init__(self, dataset_path, transform=None, grayscale=True):
         assert os.path.exists(dataset_path)
         self.x = os.path.join(dataset_path, 'X')
         assert os.path.exists(self.x)
@@ -18,6 +18,7 @@ class StructureDataset(Dataset):
             self.index = [tuple(
                 i.split(':')) for i in index_file if i]
         self.transform = transform
+        self.grayscale = grayscale
 
     def __getitem__(self, index):
         x_name, y_name = self.index[index]
@@ -25,7 +26,10 @@ class StructureDataset(Dataset):
         assert os.path.exists(x_path)
         y_path = os.path.join(self.y, y_name.strip())
         assert os.path.exists(y_path)
-        x_data = cv2.imread(x_path)
+        if self.grayscale:
+            x_data = cv2.imread(x_path, cv2.IMREAD_GRAYSCALE)
+        else:
+            x_data = cv2.imread(x_path, cv2.IMREAD_COLOR)
         with open(y_path, 'r') as y_file:
             y_data = json.load(y_file)
         if callable(self.transform):
@@ -46,9 +50,10 @@ class StructureDataset(Dataset):
 
 
 if __name__ == '__main__':
-    im = cv2.imread('F:/img1')
-    d = StructureDataset('E:/Code/Mine/github/tex/.data/structure')
-    for x in d: print(x[1])
-    print('*****************')
-    d.add(im, {1: 1, 2: 2})
-    for x in d: print(x[1])
+    im = cv2.imread('F:/img1.png', cv2.IMREAD_GRAYSCALE)
+    print(im.shape)
+    # d = SimpleStructureDataset('E:/Code/Mine/github/tex/.data/train/structure')
+    # for x in d: print(x[1])
+    # print('*****************')
+    # d.add(im, {1: 1, 2: 2})
+    # for x in d: print(x[1])

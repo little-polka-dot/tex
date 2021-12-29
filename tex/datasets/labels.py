@@ -1,5 +1,5 @@
+import json
 from typing import List, Dict, Tuple, Any, Callable, Iterable
-import numpy as np
 from enum import Enum, unique
 from io import StringIO
 
@@ -8,6 +8,12 @@ class StructLang(object):
     """
     自定义的表格描述标签语言
     """
+
+    @unique
+    class Placeholder(Enum):
+        PAD = 0
+        SOS = 1
+        EOS = 2
 
     @unique
     class Vocab(Enum):
@@ -30,6 +36,27 @@ class StructLang(object):
     def __getitem__(self, item: Tuple[int, int]):
         return self._data[item[0]][item[1]]
 
+    def to_json(self, **kwargs):
+        return json.dumps(self.to_object(), **kwargs)
+
+    @classmethod
+    def from_json(cls, s):
+        return cls.from_object(json.loads(s))
+
+    def to_object(self):
+        return {
+            'rows': self._rows,
+            'cols': self._cols,
+            'data': [[i.name for i in r] for r in self._data],
+        }
+
+    @classmethod
+    def from_object(cls, obj_params):
+        new_struct = cls(obj_params['rows'], obj_params['cols'], False)
+        new_struct._data = [[
+            getattr(cls.Vocab, i) for i in r] for r in obj_params['data']]
+        return new_struct
+
     @property
     def rows(self):
         return self._rows
@@ -37,6 +64,10 @@ class StructLang(object):
     @property
     def cols(self):
         return self._cols
+
+    @property
+    def size(self):
+        return self._rows * self._cols
 
     @property
     def data(self):
@@ -97,16 +128,24 @@ class StructLang(object):
             self._data[pos[0]][col] = self.Vocab.CELL
         self._data[pos[0]][pos[1]] = self.Vocab.CELL
 
-    def label(self, offset=0):
-        def _func():
-            for row in range(self._rows):
-                yield self.Vocab.LINE.value
-                for col in range(self._cols):
-                    yield self._data[row][col].value
-        return [i + offset for i in _func()]
+    def items(self):
+        for row in range(self._rows):
+            yield self.Vocab.LINE
+            for col in range(self._cols):
+                yield self._data[row][col]
 
-    def label_numpy(self, offset=0):
-        return np.array(self.label(offset))
+    def flatten(self, offset=0):
+        return [i.value + offset for i in self.items()]
+
+    def labels(self, seq_len=0, use_sos=False, use_eos=False, cut_len=0):
+        lab = self.flatten(len(self.Placeholder))  # 占位符在前
+        if use_sos:
+            lab = [self.Placeholder.SOS.value, *lab]
+        if use_eos:
+            lab = [*lab, self.Placeholder.EOS.value]
+        if 0 < cut_len < len(lab): lab = lab[:cut_len]
+        return lab + [
+            self.Placeholder.PAD.value] * (seq_len - len(lab))
 
     def __str__(self):
         return '\n'.join(['\t'.join([self._data[row][col].name for col in range(
@@ -253,21 +292,23 @@ if __name__ == '__main__':
         },
     ]
 
-    s = StructLang(2, 6)
-    s.merge_cell((0, 1), (0, 2))
-    s.merge_cell((0, 3), (1, 3))
-    s.merge_cell((0, 4), (1, 5))
-    s.merge_cell((1, 0), (1, 1))
-    print(s, '\n')
+    st = StructLang(2, 6)
+    st.merge_cell((0, 1), (0, 2))
+    st.merge_cell((0, 3), (1, 3))
+    st.merge_cell((0, 4), (1, 5))
+    st.merge_cell((1, 0), (1, 1))
+    print(st, '\n')
 
     t = StructLang.from_coordinate(coo)
     print(t, '\n')
 
-    print(s.diff(t, lambda a, b: '', lambda a, b: f'{a}:{b}'), '\n')
-    print(s == t, '\n')
+    print(st.diff(t, lambda a, b: '', lambda a, b: f'{a}:{b}'), '\n')
+    print(st == t, '\n')
 
-    print(s.label_numpy(0))
-    print(s.label_numpy(2))
+    print(st.labels(20, True, False))
+    print(st.labels(20, True, False, 15))
+    print(st.labels(20, False, True))
+    print(st.labels(20, False, True, 15))
 
     # s = StructLang(6, 6)
     # s.merge_cell((0, 1), (0, 5))
