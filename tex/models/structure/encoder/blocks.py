@@ -71,7 +71,8 @@ def make_layer(layers: int, block: Type[Block], in_planes, planes, stride=(1, 1)
 
 class ContextualAttention(nn.Module):
 
-    def __init__(self, d_model, d_hidden, kernel_size=(3, 3), padding=(1, 1), alpha=9):
+    def __init__(self, d_model, d_hidden,
+            kernel_size, padding=(1, 1), alpha=9, dropout=0.1):
         super(ContextualAttention, self).__init__()
         self.alpha = alpha
         self.key_mapping = nn.Sequential(  # TODO: why groups
@@ -89,6 +90,7 @@ class ContextualAttention(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(d_hidden, d_model * alpha, (1, 1))
         )
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         k_1 = self.key_mapping(x)  # bs,c,h,w
@@ -97,7 +99,7 @@ class ContextualAttention(nn.Module):
         atn = atn.view(x.size(0), x.size(1), self.alpha, x.size(2), x.size(3))
         atn = atn.mean(2, keepdim=False).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         k_2 = torch.softmax(atn, dim=-1) * val  # bs,c,h*w
-        return k_1 + k_2.view(*x.size())  # bs,c,h,w
+        return self.dropout(k_1 + k_2.view(*x.size()))  # bs,c,h,w
 
 
 class ContextualBlock(Block):
@@ -113,7 +115,7 @@ class ContextualBlock(Block):
                 nn.Conv2d(in_planes, planes, (1, 1)),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
-                nn.AvgPool2d((3, 3), stride, padding=(1, 1)),
+                nn.AvgPool2d((3, 3), stride=stride, padding=(1, 1)),
                 ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),

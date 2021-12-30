@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from tex.models.structure.encoder import residual
+from tex.models.structure.encoder import blocks
 from tex.models.structure.encoder import gc
 
 
@@ -8,7 +8,7 @@ class Encoder(nn.Module):
 
     def __init__(self, d_input, d_model, block, layers):
         super(Encoder, self).__init__()
-        if isinstance(block, str): block = getattr(residual, block)
+        if isinstance(block, str): block = getattr(blocks, block)
         self.pre_process = nn.Sequential(
             nn.Conv2d(d_input, 64, (7, 7), stride=(2, 2), padding=(3, 3)),
             nn.BatchNorm2d(64),
@@ -17,7 +17,7 @@ class Encoder(nn.Module):
             nn.Conv2d(64, 64, (1, 1), bias=False),
         )
         self.layers = nn.ModuleList([
-            residual.make_layer(
+            blocks.make_layer(
                 layers[0],
                 block,
                 64,
@@ -26,7 +26,7 @@ class Encoder(nn.Module):
                 sub=gc.GlobalContextBlock(
                     64 * block.expansion, 64 * block.expansion)
             ),
-            residual.make_layer(
+            blocks.make_layer(
                 layers[1],
                 block,
                 64 * block.expansion,
@@ -35,7 +35,7 @@ class Encoder(nn.Module):
                 sub=gc.GlobalContextBlock(
                     128 * block.expansion, 128 * block.expansion)
             ),
-            residual.make_layer(
+            blocks.make_layer(
                 layers[2],
                 block,
                 128 * block.expansion,
@@ -44,7 +44,7 @@ class Encoder(nn.Module):
                 sub=gc.GlobalContextBlock(
                     256 * block.expansion, 256 * block.expansion)
             ),
-            residual.make_layer(
+            blocks.make_layer(
                 layers[3],
                 block,
                 256 * block.expansion,
@@ -82,6 +82,6 @@ class Encoder(nn.Module):
         return output.transpose(1, 2)
 
 # if __name__ == '__main__':
-#     net = Encoder(1, 256, residual.BasicBlock, [3, 4, 6, 3])
+#     net = Encoder(1, 256, blocks.BasicBlock, [3, 4, 6, 3])
 #     i = torch.tensor(np.random.random((10, 1, 224, 224)), dtype=torch.float)
 #     print(net(i).size())
