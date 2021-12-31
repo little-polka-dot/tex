@@ -72,9 +72,9 @@ class Decoder(nn.Module):
         cls_x, box_x = None, None
         for _ in range(self.seq_len):
             cls_x, box_x = self.decode(dec_input, enc_value)
-            _, next_word = torch.max(cls_x, dim=-1)
+            next_word = torch.argmax(cls_x, dim=-1)[:, -1]
             dec_input = torch.cat([
-                dec_input, next_word[:, -1].unsqueeze(-1)], dim=-1)
+                dec_input, next_word.unsqueeze(-1)], dim=-1)
         # cls_x: [batch_size, seq_len, n_vocab]
         # box_x: [batch_size, seq_len, 4]
         return cls_x, box_x
@@ -86,3 +86,12 @@ class Decoder(nn.Module):
             return self.decode(dec_input, enc_value)
         else:
             return self.greedy_decode(dec_input, enc_value)
+
+
+if __name__ == '__main__':
+    x = torch.randn((2, 6, 3))
+    print(x)
+    print('1', torch.max(x, dim=-1)[1])
+    print('2', torch.argmax(x, dim=-1))
+
+    print(torch.argmax(x, dim=-1).eq(torch.max(x, dim=-1)[1]).sum()/12)

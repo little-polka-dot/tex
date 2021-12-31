@@ -8,7 +8,7 @@ def build_structure(cls, *args, **kwargs):
 if __name__ == '__main__':
     import torch
     from tex.models.structure.decoder import sos
-    batch_size = 1
+    batch_size = 3
     sos_idx = 1
     pad_idx = 0
     enc_x = torch.randn((batch_size, 1, 224, 224), dtype=torch.float)

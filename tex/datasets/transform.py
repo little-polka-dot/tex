@@ -6,6 +6,8 @@ import cv2
 
 class StructureTransformer(object):
 
+    threshold_type = cv2.THRESH_TOZERO  # 超出阈值的保持不变 低于阈值的取0
+
     @staticmethod
     def square_padding(image, padding=0):
         """ 矩形图片填充为正方形 """
@@ -24,15 +26,15 @@ class StructureTransformer(object):
         return getattr(np, str(image.dtype))(np.clip(
             image / 255 + np.random.normal(loc, scale, image.shape), 0, 1) * 255)
 
-    def __init__(self, seq_len, normalize_position, gaussian_noise,
-                 flim_mode, gaussian_blur, threshold, image_size):
+    def __init__(self, image_size, seq_len, normalize_position=True,
+                 gaussian_noise=None, flim_mode=False, gaussian_blur=None, threshold=None):
+        self._image_size = image_size
         self._seq_len = seq_len
         self._normalize_position = normalize_position
         self._gaussian_noise = gaussian_noise
         self._flim_mode = flim_mode
         self._gaussian_blur = gaussian_blur
         self._threshold = threshold
-        self._image_size = image_size
 
     def __call__(self, x_data, y_data):
         # TODO 图片的随机resize
@@ -60,12 +62,12 @@ class StructureTransformer(object):
         if not self._flim_mode:  # 颜色反转
             x_data = np.ones_like(x_data, np.uint8) * 255 - x_data
 
+        if self._threshold:  # 图像二值化
+            _, x_data = cv2.threshold(x_data, int(self._threshold * 255), 255, self.threshold_type)
+
         if self._gaussian_blur:  # 高斯模糊
             for cfg_item in self._gaussian_blur:
                 x_data = cv2.GaussianBlur(x_data, [cfg_item['kernel']] * 2, cfg_item['sigma'])
-
-        if self._threshold:  # 图像二值化
-            _, x_data = cv2.threshold(x_data, self._threshold, 255, cv2.THRESH_BINARY)
 
         x_data = cv2.resize(  # resize
             x_data, (
@@ -96,7 +98,7 @@ if __name__ == '__main__':
 
     (xd, si), (sl, sp) = StructureTransformer(**{
         'seq_len': 256,
-        'image_size': 224,
+        'image_size': 800,
         'normalize_position': True,
         'gaussian_noise': False,
         'flim_mode': False,
@@ -106,7 +108,7 @@ if __name__ == '__main__':
                 'sigma': 0,
             },
         ],
-        'threshold': None,
+        'threshold': 0.1,
     })(x, y)
     print(xd.shape)
     cv2.imshow('img', xd)

@@ -9,6 +9,15 @@ class SimpleStructureDataset(Dataset):
     imread_scale = cv2.IMREAD_GRAYSCALE
 
     def __init__(self, path='.data', transform=None):
+        """
+        文件目录结构如下：
+            - path
+                - X
+                    - *.png
+                - Y
+                    - *.txt
+                - INDEX
+        """
         self.transform = transform
         assert os.path.exists(path)
         self.i = os.path.join(path, 'INDEX')

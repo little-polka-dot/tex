@@ -9,7 +9,7 @@ class Encoder(nn.Module):
     def __init__(self, d_input, d_model, block, layers):
         super(Encoder, self).__init__()
         if isinstance(block, str): block = getattr(blocks, block)
-        self.pre_process = nn.Sequential(
+        self.pre_extract = nn.Sequential(
             nn.Conv2d(d_input, 64, (7, 7), stride=(2, 2), padding=(3, 3)),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
@@ -68,7 +68,7 @@ class Encoder(nn.Module):
         将细粒度，中粒度，粗粒度三个特征图合并为一个向量
         输出： [batch_size, img_len(取决于输入图像的size), d_model]
         """
-        x = self.pre_process(x)
+        x = self.pre_extract(x)
         output = None
         for idx, layer in enumerate(self.layers):
             x = layer(x)

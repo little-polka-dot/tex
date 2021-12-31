@@ -3,10 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 import tex.models as models
 import tex.datasets as datasets
+import tex.models.structure.losses as losses
 
 
 def train_structure(model, dataloader, device_ids=None, lr=0.0001, epochs=10):
-    from tex.models.structure.losses import structure_loss
     if device_ids:
         if isinstance(device_ids, list):
             model = nn.DataParallel(
@@ -14,13 +14,14 @@ def train_structure(model, dataloader, device_ids=None, lr=0.0001, epochs=10):
         else:
             model = model.to(device_ids)
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    for epoch in range(1, epochs+1):
+    for epoch in range(epochs):
         model.train()
         for input_, target in dataloader:
             optimizer.zero_grad()
             output = model(*input_)
-            loss = structure_loss(output, target)
-            loss.backward()
+            cls_loss, iou_loss = \
+                losses.structure_loss(output, target)
+            (cls_loss + iou_loss).backward()
             optimizer.step()
         # model.eval()
         # with torch.no_grad():
@@ -70,6 +71,7 @@ def test():
         timeout=0,
     )
     train_structure(model, dataloader)
+
 
 if __name__ == '__main__':
     test()
