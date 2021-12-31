@@ -2,14 +2,13 @@ from torch.utils.data import Dataset
 import os
 import cv2
 import json
-import numpy as np
-from tex.datasets.transform import StructureTransformer
 
 
 class SimpleStructureDataset(Dataset):
 
-    def __init__(self, path='.data', grayscale=True, transform=None):
-        self.grayscale = grayscale
+    imread_scale = cv2.IMREAD_GRAYSCALE
+
+    def __init__(self, path='.data', transform=None):
         self.transform = transform
         assert os.path.exists(path)
         self.i = os.path.join(path, 'INDEX')
@@ -22,10 +21,6 @@ class SimpleStructureDataset(Dataset):
             self.index = [
                 i.strip() for i in index_file if i]
 
-    @property
-    def transform_method(self):
-        return StructureTransformer(self.transform)
-
     def __len__(self): return len(self.index)
 
     def __getitem__(self, index):
@@ -35,20 +30,16 @@ class SimpleStructureDataset(Dataset):
         y_path = os.path.join(
             self.y, self.index[index] + '.txt')
         assert os.path.exists(y_path)
-        if self.grayscale:
-            x_data = cv2.imread(
-                x_path, cv2.IMREAD_GRAYSCALE)
-        else:
-            x_data = cv2.imread(
-                x_path, cv2.IMREAD_COLOR)
+        x_data = cv2.imread(
+            x_path, self.imread_scale)
         with open(y_path, 'r') as y_file:
             y_data = json.load(y_file)
-        if self.transform:
+        if callable(self.transform):
             x_data, y_data = \
-                self.transform_method(x_data, y_data)
+                self.transform(x_data, y_data)
         return x_data, y_data
 
-    def add(self, index_name, x_data: np.ndarray, y_data):
+    def add(self, index_name, x_data, y_data):
         assert index_name not in self.index
         x_path = os.path.join(
             self.x, index_name + '.png')
@@ -65,7 +56,7 @@ class SimpleStructureDataset(Dataset):
 
 
 if __name__ == '__main__':
-    p = 'E:/Code/Mine/github/tex/.data/structure/train'
+    p = 'E:/Code/Mine/github/tex/test/.data/structure/train'
     config = {
         'seq_len': 256,
         'image_size': 227,

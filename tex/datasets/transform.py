@@ -24,17 +24,24 @@ class StructureTransformer(object):
         return getattr(np, str(image.dtype))(np.clip(
             image / 255 + np.random.normal(loc, scale, image.shape), 0, 1) * 255)
 
-    def __init__(self, cfg):
-        self.cfg = cfg
+    def __init__(self, seq_len, normalize_position, gaussian_noise,
+                 flim_mode, gaussian_blur, threshold, image_size):
+        self._seq_len = seq_len
+        self._normalize_position = normalize_position
+        self._gaussian_noise = gaussian_noise
+        self._flim_mode = flim_mode
+        self._gaussian_blur = gaussian_blur
+        self._threshold = threshold
+        self._image_size = image_size
 
     def __call__(self, x_data, y_data):
         # TODO 图片的随机resize
         description = StructLang.from_object(y_data['description'])
         cut_len = random.randint(1, description.size + 1)  # 随机截断表格描述语句(用于模型训练)
-        seq_labels = np.array(description.labels(self.cfg['seq_len'], False, True, cut_len))
-        seq_inputs = np.array(description.labels(self.cfg['seq_len'], True, False, cut_len))
+        seq_labels = np.array(description.labels(self._seq_len, False, True, cut_len))
+        seq_inputs = np.array(description.labels(self._seq_len, True, False, cut_len))
 
-        if self.cfg['normalize_position']:  # 坐标归一化
+        if self._normalize_position:  # 坐标归一化
             seq_position = np.array([
                 [
                     i[0] / x_data.shape[1],  # x / W
@@ -46,24 +53,24 @@ class StructureTransformer(object):
         else:
             seq_position = np.array(y_data['position'])
 
-        if self.cfg['gaussian_noise']:  # 高斯噪音
+        if self._gaussian_noise:  # 高斯噪音
             x_data = self.gaussian_noise(
-                x_data, self.cfg['gaussian_noise']['loc'], self.cfg['gaussian_noise']['scale'])
+                x_data, self._gaussian_noise['loc'], self._gaussian_noise['scale'])
 
-        if not self.cfg['flim_mode']:  # 颜色反转
+        if not self._flim_mode:  # 颜色反转
             x_data = np.ones_like(x_data, np.uint8) * 255 - x_data
 
-        if self.cfg['gaussian_blur']:  # 高斯模糊
-            for cfg_item in self.cfg['gaussian_blur']:
+        if self._gaussian_blur:  # 高斯模糊
+            for cfg_item in self._gaussian_blur:
                 x_data = cv2.GaussianBlur(x_data, [cfg_item['kernel']] * 2, cfg_item['sigma'])
 
-        if self.cfg['threshold']:  # 图像二值化
-            _, x_data = cv2.threshold(x_data, self.cfg['threshold']['thresh'], 255, cv2.THRESH_BINARY)
+        if self._threshold:  # 图像二值化
+            _, x_data = cv2.threshold(x_data, self._threshold, 255, cv2.THRESH_BINARY)
 
         x_data = cv2.resize(  # resize
             x_data, (
-                int((self.cfg['image_size'] / max(x_data.shape[:2])) * x_data.shape[1]),
-                int((self.cfg['image_size'] / max(x_data.shape[:2])) * x_data.shape[0]),
+                int((self._image_size / max(x_data.shape[:2])) * x_data.shape[1]),
+                int((self._image_size / max(x_data.shape[:2])) * x_data.shape[0]),
             )
         )
 
@@ -75,20 +82,6 @@ class StructureTransformer(object):
 if __name__ == '__main__':
     x = cv2.imread('F:/img.png', cv2.IMREAD_GRAYSCALE)
     print(x.shape)
-    config = {
-        'seq_len': 256,
-        'image_size': 1024,
-        'normalize_position': True,
-        'gaussian_noise': False,
-        'flim_mode': False,
-        'gaussian_blur': [
-            {
-                'kernel': 3,
-                'sigma': 0,
-            },
-        ],
-        'threshold': None,
-    }
 
     st = StructLang(2, 6)
     st.merge_cell((0, 1), (0, 2))
@@ -101,7 +94,20 @@ if __name__ == '__main__':
         'position': [[0, 0, 0, 0], [12, 12, 500, 32]],
     }
 
-    (xd, si), (sl, sp) = StructureTransformer(config)(x, y)
+    (xd, si), (sl, sp) = StructureTransformer(**{
+        'seq_len': 256,
+        'image_size': 224,
+        'normalize_position': True,
+        'gaussian_noise': False,
+        'flim_mode': False,
+        'gaussian_blur': [
+            {
+                'kernel': 3,
+                'sigma': 0,
+            },
+        ],
+        'threshold': None,
+    })(x, y)
     print(xd.shape)
     cv2.imshow('img', xd)
     cv2.waitKey(0)

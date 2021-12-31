@@ -6,35 +6,34 @@ from tex.models.structure.decoder.attention import PositionalEncoding
 
 class TexStructure(nn.Module):
 
-    def __init__(self, **kwargs):
+    def __init__(self, im_channels, d_model, enc_block, enc_layers,
+                 n_vocab, seq_len, n_head, d_k, d_ffn, enc_n_pos, dec_n_pos,
+                 dec_layers=3, dec_sp_layers=1, pad_idx=0, dec_dropout=0.1):
 
         super(TexStructure, self).__init__()
 
         self.enc_net = nn.Sequential(
             Encoder(
-                d_input=kwargs['encoder'].get('d_input'),
-                d_model=kwargs['encoder'].get('d_model'),
-                block=kwargs['encoder'].get('block'),
-                layers=kwargs['encoder'].get('layers')
+                d_input=im_channels,
+                d_model=d_model,
+                block=enc_block,
+                layers=enc_layers
             ),
-            PositionalEncoding(
-                kwargs['encoder'].get('d_model'),
-                kwargs['encoder'].get('n_position')
-            ),
+            PositionalEncoding(d_model, enc_n_pos),
         )
 
         self.dec_net = Decoder(
-            n_vocab=kwargs['decoder'].get('n_vocab'),
-            seq_len=kwargs['decoder'].get('seq_len'),
-            d_model=kwargs['decoder'].get('d_model'),
-            n_head=kwargs['decoder'].get('n_head'),
-            d_k=kwargs['decoder'].get('d_k'),
-            h_layers=kwargs['decoder'].get('h_layers'),
-            d_layers=kwargs['decoder'].get('d_layers'),
-            pad_idx=kwargs['decoder'].get('pad_idx'),
-            d_ffn=kwargs['decoder'].get('d_ffn'),
-            dropout=kwargs['decoder'].get('dropout'),
-            n_position=kwargs['decoder'].get('n_position')
+            n_vocab=n_vocab,
+            seq_len=seq_len,
+            d_model=d_model,
+            n_head=n_head,
+            d_k=d_k,
+            layers=dec_layers,
+            sp_layers=dec_sp_layers,
+            pad_idx=pad_idx,
+            d_ffn=d_ffn,
+            dropout=dec_dropout,
+            n_position=dec_n_pos
         )
 
     def forward(self, enc_input, dec_input):

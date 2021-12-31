@@ -74,13 +74,13 @@ def target_masked(x):
     return x.masked_fill(mask, torch.nan)
 
 
-def iou_loss(outputs, targets, is_transformer=True):
+def iou_loss(outputs, targets, is_transform=True):
     """
-    如果坐标为x,y,w,h格式 则将is_transformer设置为True
+    如果坐标为x,y,w,h格式 则将is_transform设置为True
     """
     for batch, target in enumerate(targets):
         output = outputs[batch]  # [seq_len, 4]
-        if is_transformer:
+        if is_transform:
             target = box_transformer(target)  # [seq_len, 4]
             output = box_transformer(output)  # [seq_len, 4]
         iou = torch.diag(
@@ -91,19 +91,19 @@ def iou_loss(outputs, targets, is_transformer=True):
 def cls_loss(outputs, targets, pad_idx=0, smoothing=0.1):
     for batch, target in enumerate(targets):
         output = outputs[batch]
-        yield F.cross_entropy(
+        yield F.cross_entropy(  # 内部会自动调用softmax
             output, target, ignore_index=pad_idx, label_smoothing=smoothing)
 
 
 def structure_loss(
-        outputs, targets, is_transformer=True, pad_idx=0, smoothing=0.1):
+        outputs, targets, is_transform=True, pad_idx=0, smoothing=0.1):
     # outputs tuple([batch_size, seq_len, dim], [batch_size, seq_len, 4])
     # targets tuple([batch_size, seq_len], [batch_size, seq_len, 4])
     cls_output, box_output = outputs
     cls_target, box_target = targets
     cls_loss_value = list(cls_loss(cls_output, cls_target, pad_idx, smoothing))
     cls_loss_value = sum(cls_loss_value) / len(cls_loss_value)
-    iou_loss_value = list(iou_loss(box_output, box_target, is_transformer))
+    iou_loss_value = list(iou_loss(box_output, box_target, is_transform))
     iou_loss_value = sum(iou_loss_value) / len(iou_loss_value)
     return cls_loss_value, iou_loss_value
 
