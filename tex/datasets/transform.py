@@ -102,12 +102,7 @@ if __name__ == '__main__':
         'normalize_position': True,
         'gaussian_noise': False,
         'flim_mode': False,
-        'gaussian_blur': [
-            {
-                'kernel': 3,
-                'sigma': 0,
-            },
-        ],
+        'gaussian_blur': None,
         'threshold': 0.1,
     })(x, y)
     print(xd.shape)

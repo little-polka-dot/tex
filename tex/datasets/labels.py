@@ -154,23 +154,6 @@ class StructLang(object):
     def __repr__(self):
         return self.__str__()
 
-    @classmethod
-    def from_coordinate(cls, coordinate: List[Dict[str, int]],
-                        keys=('startRowIndex', 'startColIndex', 'endRowIndex', 'endColIndex')):
-        def is_merge_cell(n):
-            return n[keys[0]] < n[keys[2]] or n[keys[1]] < n[keys[3]]
-
-        table_rows = max([cell[keys[2]] for cell in coordinate]) + 1
-        table_cols = max([cell[keys[3]] for cell in coordinate]) + 1
-
-        new_struct = cls(table_rows, table_cols)
-
-        for cell in coordinate:
-            if is_merge_cell(cell):
-                new_struct.merge_cell((cell[keys[0]], cell[keys[1]]), (cell[keys[2]], cell[keys[3]]))
-
-        return new_struct
-
     def diff(self, other: Any, when_same: Callable[[str, str], Any] = lambda a, b: False,
              when_diff: Callable[[str, str], Any] = lambda a, b: True):
         if self._rows == other.rows and self._cols == other.cols:
@@ -292,6 +275,22 @@ if __name__ == '__main__':
         },
     ]
 
+    def from_coordinate(coordinate: List[Dict[str, int]],
+                        keys=('startRowIndex', 'startColIndex', 'endRowIndex', 'endColIndex')):
+        def is_merge_cell(n):
+            return n[keys[0]] < n[keys[2]] or n[keys[1]] < n[keys[3]]
+
+        table_rows = max([cell[keys[2]] for cell in coordinate]) + 1
+        table_cols = max([cell[keys[3]] for cell in coordinate]) + 1
+
+        new_struct = StructLang(table_rows, table_cols)
+
+        for cell in coordinate:
+            if is_merge_cell(cell):
+                new_struct.merge_cell((cell[keys[0]], cell[keys[1]]), (cell[keys[2]], cell[keys[3]]))
+
+        return new_struct
+
     st = StructLang(2, 6)
     st.merge_cell((0, 1), (0, 2))
     st.merge_cell((0, 3), (1, 3))
@@ -299,10 +298,10 @@ if __name__ == '__main__':
     st.merge_cell((1, 0), (1, 1))
     print(st, '\n')
 
-    t = StructLang.from_coordinate(coo)
+    t = from_coordinate(coo)
     print(t, '\n')
 
-    print(st.diff(t, lambda a, b: '', lambda a, b: f'{a}:{b}'), '\n')
+    print(st.diff(t, lambda a, b: 'SAME', lambda a, b: f'{a}:{b}'), '\n')
     print(st == t, '\n')
 
     print(st.labels(20, True, False))

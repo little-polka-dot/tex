@@ -4,18 +4,36 @@ from tex.models.structure.encoder import blocks
 from tex.models.structure.encoder import gc
 
 
+class EncoderPreExtractor(nn.Module):
+
+    def __init__(self, d_input, d_model, pre_act=False):
+        super(EncoderPreExtractor, self).__init__()
+        # TODO: diff between 7x7 and 3x3 ?
+        if pre_act:
+            self.net = nn.Sequential(
+                nn.Conv2d(d_input, d_model, (7, 7), stride=(2, 2), padding=(3, 3)),
+                nn.BatchNorm2d(d_model),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
+                nn.Conv2d(64, 64, (1, 1), bias=False)
+            )
+        else:
+            self.net = nn.Sequential(
+                nn.Conv2d(d_input, d_model, (7, 7), stride=(2, 2), padding=(3, 3)),
+                nn.BatchNorm2d(d_model),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
+            )
+
+    def forward(self, x): return self.net(x)
+
+
 class Encoder(nn.Module):
 
     def __init__(self, d_input, d_model, block, layers):
         super(Encoder, self).__init__()
         if isinstance(block, str): block = getattr(blocks, block)
-        self.pre_extract = nn.Sequential(
-            nn.Conv2d(d_input, 64, (7, 7), stride=(2, 2), padding=(3, 3)),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
-            nn.Conv2d(64, 64, (1, 1), bias=False),
-        )
+        self.pre_extract = EncoderPreExtractor(d_input, 64, True)
         self.layers = nn.ModuleList([
             blocks.make_layer(
                 layers[0],
