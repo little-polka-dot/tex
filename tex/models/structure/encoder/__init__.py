@@ -15,7 +15,7 @@ class EncoderPreExtractor(nn.Module):
                 nn.BatchNorm2d(d_model),
                 nn.ReLU(inplace=True),
                 nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
-                nn.Conv2d(64, 64, (1, 1), bias=False)
+                nn.Conv2d(d_model, d_model, (1, 1), bias=False)
             )
         else:
             self.net = nn.Sequential(
@@ -30,55 +30,55 @@ class EncoderPreExtractor(nn.Module):
 
 class Encoder(nn.Module):
 
-    def __init__(self, d_input, d_model, block, layers):
+    def __init__(self, d_input, d_model, block, layers, d_layer=(64, 128, 256, 512)):
         super(Encoder, self).__init__()
         if isinstance(block, str): block = getattr(blocks, block)
-        self.pre_extract = EncoderPreExtractor(d_input, 64, True)
+        self.pre_extract = EncoderPreExtractor(d_input, d_layer[0], True)
         self.layers = nn.ModuleList([
             blocks.make_layer(
                 layers[0],
                 block,
-                64,
-                64,
+                d_layer[0],
+                d_layer[0],
                 stride=(1, 1),
                 sub=gc.GlobalContextBlock(
-                    64 * block.expansion, 64 * block.expansion)
+                    d_layer[0] * block.expansion, d_layer[0] * block.expansion)
             ),
             blocks.make_layer(
                 layers[1],
                 block,
-                64 * block.expansion,
-                128,
+                d_layer[0] * block.expansion,
+                d_layer[1],
                 stride=(2, 2),
                 sub=gc.GlobalContextBlock(
-                    128 * block.expansion, 128 * block.expansion)
+                    d_layer[1] * block.expansion, d_layer[1] * block.expansion)
             ),
             blocks.make_layer(
                 layers[2],
                 block,
-                128 * block.expansion,
-                256,
+                d_layer[1] * block.expansion,
+                d_layer[2],
                 stride=(2, 2),
                 sub=gc.GlobalContextBlock(
-                    256 * block.expansion, 256 * block.expansion)
+                    d_layer[2] * block.expansion, d_layer[2] * block.expansion)
             ),
             blocks.make_layer(
                 layers[3],
                 block,
-                256 * block.expansion,
-                512,
+                d_layer[2] * block.expansion,
+                d_layer[3],
                 stride=(2, 2),
                 sub=gc.GlobalContextBlock(
-                    512 * block.expansion, 512 * block.expansion)
+                    d_layer[3] * block.expansion, d_layer[3] * block.expansion)
             ),
         ])
         self.layers_map = nn.ModuleList([
             nn.Conv2d(
-                128 * block.expansion, d_model, (1, 1), bias=False),
+                d_layer[1] * block.expansion, d_model, (1, 1), bias=False),
             nn.Conv2d(
-                256 * block.expansion, d_model, (1, 1), bias=False),
+                d_layer[2] * block.expansion, d_model, (1, 1), bias=False),
             nn.Conv2d(
-                512 * block.expansion, d_model, (1, 1), bias=False)
+                d_layer[3] * block.expansion, d_model, (1, 1), bias=False)
         ])
 
     def forward(self, x):
@@ -99,7 +99,8 @@ class Encoder(nn.Module):
                     output = torch.cat((output, vec), -1)
         return output.transpose(1, 2)
 
-# if __name__ == '__main__':
-#     net = Encoder(1, 256, blocks.BasicBlock, [3, 4, 6, 3])
-#     i = torch.tensor(np.random.random((10, 1, 224, 224)), dtype=torch.float)
-#     print(net(i).size())
+
+if __name__ == '__main__':
+    net = Encoder(1, 256, blocks.BasicBlock, [3, 4, 6, 3])
+    i = torch.randn((10, 1, 224, 224))
+    print(net(i).size())

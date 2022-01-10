@@ -19,10 +19,13 @@ class Block(nn.Module):
                 nn.BatchNorm2d(planes * self.expansion),
             )
 
+    @staticmethod
+    def call_or_pass(value, func=None):
+        return func(value) if callable(func) else value
+
     def forward(self, x):  # pre-activation
-        def _call(v, func=None): return func(v) if callable(func) else v
-        return _call(
-            self.net(x), self.sub_method) + _call(x, self.downsample)
+        return self.call_or_pass(
+            self.net(x), self.sub_method) + self.call_or_pass(x, self.downsample)
 
 
 class BasicBlock(Block):
@@ -56,17 +59,6 @@ class Bottleneck(Block):
             nn.ReLU(inplace=True),
             nn.Conv2d(planes, planes * self.expansion, (1, 1)),
         )
-
-
-def make_layer(layers: int, block: Type[Block], in_planes, planes, stride=(1, 1), sub=None):
-    return nn.Sequential(
-        block(in_planes, planes, stride=stride, sub=sub),
-        *[
-            block(
-                planes * block.expansion, planes, sub=sub
-            ) for _ in range(1, layers)
-        ]
-    )
 
 
 class ContextualAttention(nn.Module):
@@ -132,6 +124,18 @@ class ContextualBlock(Block):
                 nn.ReLU(inplace=True),
                 nn.Conv2d(planes, planes * self.expansion, (1, 1)),
             )
+
+
+def make_layer(layers: int, block: Type[Block],
+               in_planes, planes, stride=(1, 1), sub=None):
+    return nn.Sequential(
+        block(in_planes, planes, stride=stride, sub=sub),
+        *[
+            block(
+                planes * block.expansion, planes, sub=sub
+            ) for _ in range(1, layers)
+        ]
+    )
 
 
 if __name__ == '__main__':
