@@ -85,7 +85,7 @@ def iou_loss(outputs, targets, is_transform=True):
             output = box_transformer(output)  # [seq_len, 4]
         iou = torch.diag(
             jaccard(target_masked(target), output))  # [seq_len]
-        # yield torch.nanmean(-torch.log(iou))
+        # yield torch.nanmean(-torch.log(iou))  # inf会导致模型无法拟合
         yield torch.nanmean(1 - iou)
 
 
