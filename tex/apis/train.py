@@ -1,12 +1,15 @@
-import torch
+from copy import deepcopy
 import torch.nn as nn
 import torch.optim as optim
 import tex.models as models
 import tex.datasets as datasets
 import tex.models.structure.losses as losses
+from torch.utils.data import DataLoader
+import tex.utils.builder as builder
 
 
-def train_structure(model, dataloader, device_ids=None, lr=0.0001, epochs=10):
+def train_structure(model: nn.Module, dataloader: DataLoader,
+                    device_ids=None, lr=0.0001, epochs=10):
     if device_ids:
         if isinstance(device_ids, list):
             model = nn.DataParallel(
@@ -29,48 +32,52 @@ def train_structure(model, dataloader, device_ids=None, lr=0.0001, epochs=10):
 
 
 def test():
-    model = models.builder.build_structure(
-        'TexStructure',
-        im_channels=1,  # encoder输入图层数
-        d_model=512,  # encoder输出图层数
-        enc_layers=[3, 4, 6, 3],
-        enc_block='ContextualBlock',
-        enc_n_pos=4096,  # 须大于等于图像卷积后的size
-        n_vocab=9,  # 表结构描述语言词汇量
-        seq_len=256,  # decoder序列长度
-        n_head=8,
-        d_k=128,
-        dec_layers=5,
-        dec_sp_layers=1,
-        d_ffn=1024,
-        dec_dropout=0.1,
-        dec_n_pos=256,  # 须大于等于seq_len
-        pad_idx=0,
-    )
-    dataloader = datasets.builder.build_dataloader(
-        datasets.builder.build_structure_dataset(
-            'SimpleStructureDataset',
-            path='E:/Code/Mine/github/tex/test/.data/structure/train',
-            transform=datasets.builder.build_structure_transform(
-                'StructureTransformer',
-                seq_len=256,
-                image_size=224,
-                normalize_position=True,
-                gaussian_noise=False,
-                flim_mode=False,
-                gaussian_blur=[
-                    {'kernel': 3, 'sigma': 0},
-                ],
-                threshold=None,
-            )
-        ),
-        batch_size=5,
-        shuffle=True,
-        num_workers=3,
-        drop_last=True,
-        timeout=0,
-    )
-    train_structure(model, dataloader)
+    settings = {
+        'model': {
+            'cls': 'tex.models.structure.TexStructure',
+            'im_channels': 1,  # encoder输入图层数
+            'd_model': 512,  # encoder输出图层数
+            'enc_layers': [3, 4, 6, 3],
+            'enc_block': 'ContextualBlock',
+            'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
+            'n_vocab': 9,  # 表结构描述语言词汇量
+            'seq_len': 256,  # decoder序列长度
+            'n_head': 8,
+            'd_k': 128,
+            'dec_layers': 5,
+            'dec_sp_layers': 1,
+            'd_ffn': 1024,
+            'dec_dropout': 0.1,
+            'dec_n_pos': 256,  # 须大于等于seq_len
+            'pad_idx': 0,
+        },
+        'dataloader': {
+            'cls': 'torch.utils.data.DataLoader',
+            'dataset': {
+                'cls': 'tex.datasets.structure.SimpleStructureDataset',
+                'path': 'E:/Code/Mine/github/tex/test/.data/structure/train',
+                'transform': {
+                    'cls': 'tex.datasets.transform.StructureTransformer',
+                    'seq_len': 256,
+                    'image_size': 224,
+                    'normalize_position': True,
+                    'gaussian_noise': False,
+                    'flim_mode': False,
+                    'gaussian_blur': None,
+                    'threshold': None,
+                }
+            },
+            'batch_size': 5,
+            'shuffle': True,
+            'num_workers': 3,
+            'drop_last': True,
+            'timeout': 0,
+        },
+        'device_ids': None,
+        'lr': 0.0001,
+        'epochs': 10
+    }
+    print(builder.build_from_settings(settings))
 
 
 if __name__ == '__main__':
