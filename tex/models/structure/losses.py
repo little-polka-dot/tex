@@ -85,7 +85,8 @@ def iou_loss(outputs, targets, is_transform=True):
             output = box_transformer(output)  # [seq_len, 4]
         iou = torch.diag(
             jaccard(target_masked(target), output))  # [seq_len]
-        yield torch.nanmean(-torch.log(iou))
+        # yield torch.nanmean(-torch.log(iou))
+        yield torch.nanmean(1 - iou)
 
 
 def cls_loss(outputs, targets, pad_idx=0, smoothing=0.1):
@@ -116,7 +117,7 @@ if __name__ == '__main__':
     print(a[0].size(), a[1].size())
     b = (
         torch.randint(9, [1, 3]),
-        torch.tensor([[[0.1, 0.1, 0.2, 0.2], [0.2, 0.2, 0.8, 0.8], [0.1, 0.1, 0, torch.nan]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.2, 0.2], [0.4, 0.4, 0.8, 0.8], [0.1, 0.1, 0, torch.nan]]], dtype=torch.float64)
     )
     print(b[0].size(), b[1].size())
     print(structure_loss(a, b))
