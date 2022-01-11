@@ -3,7 +3,8 @@ import torch
 
 def sequence_accuracy(output, target, ignore_idx=0):
     """
-    准确率 预测正确（正类负类）的占总的比重
+    总体评估一个模型 如果需要评估每一个类的识别情况则需要使用f1值来评估
+    准确率 预测正确的占总的比重
     output [batch_size, seq_len, n_classes]
     target [batch_size, seq_len]
     """
@@ -62,5 +63,5 @@ if __name__ == '__main__':
     t = torch.tensor([[1,0,0,1,1,2],[2,2,2,2,1,0]])
     print(sequence_recall(x, t, 2))
     print(sequence_precision(x, t, 2))
-    print(sequence_accuracy(x, t, 0))
+    print(sequence_f1(x, t, 2))
 
