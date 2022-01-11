@@ -3,10 +3,9 @@ from typing import Dict, Any
 from copy import deepcopy
 
 
-def import_class(module_cls):
+def import_class(module_cls: str):
     if module_cls[0] == '.':
-        # 局部路径则采用当前项目为根路径
-        module_cls = 'tex' + module_cls
+        module_cls = '__main__' + module_cls
     module_cls = module_cls.split('.')
     module_idx = len(module_cls) - 1
     module = None
@@ -26,9 +25,14 @@ def import_class(module_cls):
 
 
 def build_from_settings(
-        settings: Dict[str, Any], cls='cls'):
+        settings: Dict[str, Any], cls='class'):
     """
-    递归扫描dict 如果存在cls字段 则动态导入该类并初始化对象
+    递归扫描dict，动态导入其中的cls并构建对象。
+    >> settings = {"YourObject": {"class": "YourModule.YourClass", ...}}
+    >> build_from_settings(settings)
+    {"YourObject": YourModule.YourClass(...)}
+    class字段格式: [module.]module.class[.class]
+    当类实现在执行文件中时可缺省模块名: .class[.class]
     """
     def _build(root):
         for key in root:
@@ -44,4 +48,4 @@ def build_from_settings(
 
 
 if __name__ == '__main__':
-    print(import_class('A.B'))
+    print(import_class('.A.B'))

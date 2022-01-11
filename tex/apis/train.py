@@ -34,7 +34,7 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
 def test():
     settings = {
         'model': {
-            'cls': 'tex.models.structure.TexStructure',
+            'class': 'tex.models.structure.TexStructure',
             'im_channels': 1,  # encoder输入图层数
             'd_model': 512,  # encoder输出图层数
             'enc_layers': [3, 4, 6, 3],
@@ -52,12 +52,12 @@ def test():
             'pad_idx': 0,
         },
         'dataloader': {
-            'cls': 'torch.utils.data.DataLoader',
+            'class': 'torch.utils.data.DataLoader',
             'dataset': {
-                'cls': 'tex.datasets.structure.SimpleStructureDataset',
+                'class': 'tex.datasets.structure.SimpleStructureDataset',
                 'path': 'E:/Code/Mine/github/tex/test/.data/structure/train',
                 'transform': {
-                    'cls': 'tex.datasets.transform.StructureTransformer',
+                    'class': 'tex.datasets.transform.StructureTransformer',
                     'seq_len': 256,
                     'image_size': 224,
                     'normalize_position': True,
