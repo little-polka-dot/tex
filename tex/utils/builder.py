@@ -10,7 +10,7 @@ def import_class(module_cls):
     module_cls = module_cls.split('.')
     module_idx = len(module_cls) - 1
     module = None
-    while module_idx >= 0:
+    while module_idx > 0:
         # 尝试区分module与class并加载module
         # 首先默认末尾为class 其余为module
         try:
@@ -25,14 +25,18 @@ def import_class(module_cls):
         return module
 
 
-def build_from_settings(settings: Dict[str, Any]) -> Any:
+def build_from_settings(
+        settings: Dict[str, Any], cls='cls'):
+    """
+    递归扫描dict 如果存在cls字段 则动态导入该类并初始化对象
+    """
     def _build(root):
         for key in root:
             if isinstance(root[key], dict):
                 root[key] = _build(root[key])
-        if 'cls' in root:
+        if cls in root:
             return import_class(
-                root.pop('cls'))(**root)
+                root.pop(cls))(**root)
         else:
             return root
     if isinstance(settings, dict):
@@ -40,4 +44,4 @@ def build_from_settings(settings: Dict[str, Any]) -> Any:
 
 
 if __name__ == '__main__':
-    print(import_class('.A.B'))
+    print(import_class('A.B'))
