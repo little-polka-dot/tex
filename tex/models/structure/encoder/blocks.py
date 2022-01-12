@@ -63,8 +63,7 @@ class Bottleneck(Block):
 
 class ContextualAttention(nn.Module):
 
-    def __init__(self, d_model, d_hidden,
-            kernel_size, padding=(1, 1), alpha=9):
+    def __init__(self, d_model, d_hidden, kernel_size, padding=(1, 1), alpha=9):
         super(ContextualAttention, self).__init__()
         self.alpha = alpha
         self.key_mapping = nn.Sequential(  # TODO: why groups
@@ -107,7 +106,7 @@ class ContextualBlock(Block):
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
                 nn.AvgPool2d((3, 3), stride=stride, padding=(1, 1)),
-                ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
+                ContextualAttention(planes, planes, (3, 3), padding=(1, 1), alpha=9),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(planes, planes * self.expansion, (1, 1)),
@@ -119,7 +118,7 @@ class ContextualBlock(Block):
                 nn.Conv2d(in_planes, planes, (1, 1)),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
-                ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
+                ContextualAttention(planes, planes, (3, 3), padding=(1, 1), alpha=9),
                 nn.BatchNorm2d(planes),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(planes, planes * self.expansion, (1, 1)),

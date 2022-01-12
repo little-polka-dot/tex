@@ -86,7 +86,7 @@ def bounding_rect(box_a, box_b):
     return torch.concat((x_min, y_min, x_max, y_max), dim=1)
 
 
-def center_distance(box_a, box_b, is_sqrt=True):
+def center_distance(box_a, box_b, is_sqrt=False):
     """
     计算矩形间的中心点距离
     input: (x_min, y_min, x_max, y_max)
@@ -99,7 +99,7 @@ def center_distance(box_a, box_b, is_sqrt=True):
     return torch.sqrt(dist) if is_sqrt else dist
 
 
-def diagonal_length(x, is_sqrt=True):
+def diag_distance(x, is_sqrt=False):
     """
     矩形对角线长度
     input: (x_min, y_min, x_max, y_max)
@@ -108,52 +108,72 @@ def diagonal_length(x, is_sqrt=True):
     return torch.sqrt(dist) if is_sqrt else dist
 
 
-def iou_loss(outputs, targets, is_transform=True):
+def aspect(x):
+    """
+    矩形宽高比
+    input: (x_min, y_min, x_max, y_max)
+    """
+    return torch.abs(x[:, 0] - x[:, 2]) / torch.abs(x[:, 1] - x[:, 3])
+
+
+def iou_loss(output, target, is_transform=True):
     """
     如果坐标为x,y,w,h格式 则将is_transform设置为True
     """
-    def _batch_iter():
-        for batch, target in enumerate(targets):
-            output = outputs[batch]  # [seq_len, 4]
-            if is_transform:
-                target = box_transformer(target)  # [seq_len, 4]
-                output = box_transformer(output)  # [seq_len, 4]
-            iou = torch.diag(
-                jaccard(target_masked(target), output))  # [seq_len]
-            # yield torch.nanmean(-torch.log(iou))  # inf会导致模型无法拟合
-            yield torch.nanmean(1 - iou)
-    return torch.mean(torch.stack(list(_batch_iter())))
+    if is_transform:
+        target = box_transformer(target)  # [seq_len, 4]
+        output = box_transformer(output)  # [seq_len, 4]
+    iou = torch.diag(
+        jaccard(target_masked(target), output))  # [seq_len]
+    # yield torch.nanmean(-torch.log(iou))  # inf会导致模型无法拟合
+    return torch.nanmean(1 - iou)
 
 
-def distance_iou_loss(outputs, targets, is_transform=True):
+def distance_iou_loss(output, target, is_transform=True):
     """ DIoU """
-    def _batch_iter():
-        for batch, target in enumerate(targets):
-            output = outputs[batch]  # [seq_len, 4]
-            if is_transform:
-                target = box_transformer(target)  # [seq_len, 4]
-                output = box_transformer(output)  # [seq_len, 4]
-            iou = torch.diag(
-                jaccard(target_masked(target), output))  # [seq_len]
-            dcn = center_distance(target, output, False)
-            dbr = diagonal_length(
-                bounding_rect(target, output), False)
-            # TODO 取最大值还是取平均值?
-            yield torch.nanmean(1 - iou + dcn / dbr)
-    return torch.mean(torch.stack(list(_batch_iter())))
+    if is_transform:
+        target = box_transformer(target)  # [seq_len, 4]
+        output = box_transformer(output)  # [seq_len, 4]
+    iou = torch.diag(
+        jaccard(target_masked(target), output))  # [seq_len]
+    dcn = center_distance(target, output)
+    dbr = diag_distance(bounding_rect(target, output))
+    # TODO 取最大值还是取平均值?
+    return torch.nanmean(1 - iou + dcn / dbr)
 
 
-def complete_iou_loss(outputs, targets, is_transform=True):
+def complete_iou_loss(output, target, is_transform=True):
     """ CIoU """
+    if is_transform:
+        target = box_transformer(target)  # [seq_len, 4]
+        output = box_transformer(output)  # [seq_len, 4]
+    iou = torch.diag(
+        jaccard(target_masked(target), output))  # [seq_len]
+    dcn = center_distance(target, output)  # 中心距离
+    dbr = diag_distance(bounding_rect(target, output))  # 外接矩形对角距离
+    val = torch.arctan(
+        aspect(target)) - torch.arctan(aspect(output))
+    val = (4 / (torch.pi * torch.pi)) * torch.pow(val, 2)
+    aph = val / ((1 - iou) + val)  # 完全重合时该值为nan
+    return torch.nanmean(1 - iou + dcn / dbr + aph * val)
 
 
-def cls_loss(outputs, targets, pad_idx=0, smoothing=0.1, weight=None):
-    def _batch_iter():
-        for batch, target in enumerate(targets):
-            output = outputs[batch]
-            yield F.cross_entropy(  # 内部会自动调用softmax
-                output, target, ignore_index=pad_idx, label_smoothing=smoothing, weight=weight)
-    return torch.mean(torch.stack(list(_batch_iter())))
+def cls_loss(output, target, pad_idx=0, smoothing=0.1, weight=None):
+    return F.cross_entropy(  # 内部会自动调用softmax
+        output, target, ignore_index=pad_idx, label_smoothing=smoothing, weight=weight)
+
+
+def batch_mean(loss_func, outputs, targets, **kwargs):
+    # TODO: 循环效率较低 需要优化
+    return torch.nanmean(
+        torch.stack(
+            [
+                loss_func(
+                    outputs[batch], targets[batch], **kwargs)
+                for batch in range(targets.size(0))
+            ]
+        )
+    )
 
 
 def structure_loss(
@@ -162,21 +182,22 @@ def structure_loss(
     # targets tuple([batch_size, seq_len], [batch_size, seq_len, 4])
     cls_output, box_output = outputs
     cls_target, box_target = targets
-    cls_loss_value = cls_loss(
-        cls_output, cls_target, pad_idx=pad_idx, smoothing=smoothing, weight=weight)
-    iou_loss_value = distance_iou_loss(box_output, box_target, is_transform)
+    cls_loss_value = batch_mean(
+        cls_loss, cls_output, cls_target, pad_idx=pad_idx, smoothing=smoothing, weight=weight)
+    iou_loss_value = batch_mean(
+        complete_iou_loss, box_output, box_target, is_transform=is_transform)
     return cls_loss_value, iou_loss_value
 
 
 if __name__ == '__main__':
     a = (
         torch.randn([1, 3, 9]),
-        torch.tensor([[[1, 1, 2, 2], [2, 2, 2, 2], [1, 1, 1, 1]]], dtype=torch.float64)
+        torch.tensor([[[1, 1, 2, 2.1], [2, 2, 2, 2], [1, 1, 1, 1]]], dtype=torch.float64)
     )
     print(a[0].size(), a[1].size())
     b = (
         torch.randint(9, [1, 3]),
-        torch.tensor([[[1, 1, 2, 2], [4, 4, 8, 8], [1, 1, 0, torch.nan]]], dtype=torch.float64)
+        torch.tensor([[[1, 1, 2, 2], [4, 4, 8, 10], [1, 1, 0, torch.nan]]], dtype=torch.float64)
     )
     print(b[0].size(), b[1].size())
-    print(structure_loss(a, b))
+    print(structure_loss(a, b)[1])

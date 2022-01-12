@@ -1,8 +1,5 @@
-from copy import deepcopy
 import torch.nn as nn
 import torch.optim as optim
-import tex.models as models
-import tex.datasets as datasets
 import tex.models.structure.losses as losses
 from torch.utils.data import DataLoader
 import tex.utils.builder as builder
@@ -36,7 +33,7 @@ def test():
         'model': {
             'class': 'tex.models.structure.TexStructure',
             'im_channels': 1,  # encoder输入图层数
-            'd_model': 512,  # encoder输出图层数
+            'd_model': 512,  # 向量维度
             'enc_layers': [3, 4, 6, 3],
             'enc_block': 'ContextualBlock',
             'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
