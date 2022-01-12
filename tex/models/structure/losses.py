@@ -135,11 +135,11 @@ def distance_iou_loss(outputs, targets, is_transform=True):
                 output = box_transformer(output)  # [seq_len, 4]
             iou = torch.diag(
                 jaccard(target_masked(target), output))  # [seq_len]
-            c_len = center_distance(target, output, False)
-            d_len = diagonal_length(
+            dcn = center_distance(target, output, False)
+            dbr = diagonal_length(
                 bounding_rect(target, output), False)
             # TODO 取最大值还是取平均值?
-            yield torch.nanmean(1 - iou + c_len / d_len)
+            yield torch.nanmean(1 - iou + dcn / dbr)
     return torch.mean(torch.stack(list(_batch_iter())))
 
 
