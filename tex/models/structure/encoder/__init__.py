@@ -4,26 +4,18 @@ from tex.models.structure.encoder import blocks
 from tex.models.structure.encoder import gc
 
 
-class EncoderPreExtractor(nn.Module):
+class EncoderPreprocess(nn.Module):
 
-    def __init__(self, d_input, d_model, pre_act=False):
-        super(EncoderPreExtractor, self).__init__()
-        # TODO: diff between 7x7 and 3x3 ?
-        if pre_act:
-            self.net = nn.Sequential(
-                nn.Conv2d(d_input, d_model, (7, 7), stride=(2, 2), padding=(3, 3)),
-                nn.BatchNorm2d(d_model),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
-                nn.Conv2d(d_model, d_model, (1, 1), bias=False)
-            )
-        else:
-            self.net = nn.Sequential(
-                nn.Conv2d(d_input, d_model, (7, 7), stride=(2, 2), padding=(3, 3)),
-                nn.BatchNorm2d(d_model),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
-            )
+    def __init__(self, d_input, d_model):
+        super(EncoderPreprocess, self).__init__()
+        # TODO: diff between 7x7 and 3x3
+        self.net = nn.Sequential(
+            nn.Conv2d(d_input, d_model, (7, 7), stride=(2, 2), padding=(3, 3)),
+            nn.BatchNorm2d(d_model),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
+            nn.Conv2d(d_model, d_model, (1, 1), bias=False)
+        )
 
     def forward(self, x): return self.net(x)
 
@@ -33,7 +25,7 @@ class Encoder(nn.Module):
     def __init__(self, d_input, d_model, block, layers, d_layer=(64, 128, 256, 512)):
         super(Encoder, self).__init__()
         if isinstance(block, str): block = getattr(blocks, block)
-        self.pre_extract = EncoderPreExtractor(d_input, d_layer[0], True)
+        self.pre_layer = EncoderPreprocess(d_input, d_layer[0])
         self.layers = nn.ModuleList([
             blocks.make_layer(
                 layers[0],
@@ -86,7 +78,7 @@ class Encoder(nn.Module):
         将细粒度，中粒度，粗粒度三个特征图合并为一个向量
         输出： [batch_size, img_len(取决于输入图像的size), d_model]
         """
-        x = self.pre_extract(x)
+        x = self.pre_layer(x)
         output = None
         for idx, layer in enumerate(self.layers):
             x = layer(x)
