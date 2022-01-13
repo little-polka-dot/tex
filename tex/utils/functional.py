@@ -1,44 +1,39 @@
 from functools import reduce
-from typing import Iterable, Iterator
+from typing import Iterable
 
 
-def call_or_pass(func, value):
-    return func(value) if callable(func) else value
+def optional_function(func, default=None):
+    return func if callable(func) else (default if callable(default) else (lambda *w, **kw: None))
 
 
 def and_(*__iter):
-    if len(__iter) == 1 and isinstance(__iter[0], Iterable):
-        return reduce(lambda a, b: a and b, __iter[0], True)
-    else:
-        return reduce(lambda a, b: a and b, __iter, True)
+    return reduce(lambda a, b: a and b, __iter[0], True) \
+        if len(__iter) == 1 and isinstance(__iter[0], Iterable) \
+        else reduce(lambda a, b: a and b, __iter, True)
 
 
 def or_(*__iter):
-    if len(__iter) == 1 and isinstance(__iter[0], Iterable):
-        return reduce(lambda a, b: a or b, __iter[0], False)
-    else:
-        return reduce(lambda a, b: a or b, __iter, False)
+    return reduce(lambda a, b: a or b, __iter[0], False) \
+        if len(__iter) == 1 and isinstance(__iter[0], Iterable) \
+        else reduce(lambda a, b: a or b, __iter, False)
 
 
 def mul(*__iter):
-    if len(__iter) == 1 and isinstance(__iter[0], Iterable):
-        return reduce(lambda a, b: a * b, __iter[0], 1)
-    else:
-        return reduce(lambda a, b: a * b, __iter, 1)
+    return reduce(lambda a, b: a * b, __iter[0], 1) \
+        if len(__iter) == 1 and isinstance(__iter[0], Iterable) \
+        else reduce(lambda a, b: a * b, __iter, 1)
 
 
 def is_odd(*__iter):
-    if len(__iter) == 1 and isinstance(__iter[0], Iterable):
-        return and_(map(lambda x: x % 2 != 0, __iter[0]))
-    else:
-        return and_(map(lambda x: x % 2 != 0, __iter))
+    return and_(map(lambda x: x % 2 != 0, __iter[0])) \
+        if len(__iter) == 1 and isinstance(__iter[0], Iterable) \
+        else and_(map(lambda x: x % 2 != 0, __iter))
 
 
 def is_even(*__iter):
-    if len(__iter) == 1 and isinstance(__iter[0], Iterable):
-        return and_(map(lambda x: x % 2 == 0, __iter[0]))
-    else:
-        return and_(map(lambda x: x % 2 == 0, __iter))
+    return and_(map(lambda x: x % 2 == 0, __iter[0])) \
+        if len(__iter) == 1 and isinstance(__iter[0], Iterable) \
+        else and_(map(lambda x: x % 2 == 0, __iter))
 
 
 def compare(func, a, b):
@@ -46,83 +41,51 @@ def compare(func, a, b):
 
 
 def is_gt(i, v):
-    if isinstance(i, Iterable):
-        return and_(map(lambda x: x > v, i))
-    else:
-        return i > v
+    return and_(map(lambda x: x > v, i)) if isinstance(i, Iterable) else i > v
 
 
 def is_lt(i, v):
-    if isinstance(i, Iterable):
-        return and_(map(lambda x: x < v, i))
-    else:
-        return i < v
+    return and_(map(lambda x: x < v, i)) if isinstance(i, Iterable) else i < v
 
 
 def is_eq(i, v):
-    if isinstance(i, Iterable):
-        return and_(map(lambda x: x == v, i))
-    else:
-        return i == v
+    return and_(map(lambda x: x == v, i)) if isinstance(i, Iterable) else i == v
 
 
 def is_gte(i, v):
-    if isinstance(i, Iterable):
-        return and_(map(lambda x: x >= v, i))
-    else:
-        return i >= v
+    return and_(map(lambda x: x >= v, i)) if isinstance(i, Iterable) else i >= v
 
 
 def is_lte(i, v):
-    if isinstance(i, Iterable):
-        return and_(map(lambda x: x <= v, i))
-    else:
-        return i <= v
+    return and_(map(lambda x: x <= v, i)) if isinstance(i, Iterable) else i <= v
 
 
 def gt(i, v):
-    if isinstance(i, Iterable):
-        return or_(map(lambda x: x > v, i))
-    else:
-        return i > v
+    return or_(map(lambda x: x > v, i)) if isinstance(i, Iterable) else i > v
 
 
 def lt(i, v):
-    if isinstance(i, Iterable):
-        return or_(map(lambda x: x < v, i))
-    else:
-        return i < v
+    return or_(map(lambda x: x < v, i)) if isinstance(i, Iterable) else i < v
 
 
 def eq(i, v):
-    if isinstance(i, Iterable):
-        return or_(map(lambda x: x == v, i))
-    else:
-        return i == v
+    return or_(map(lambda x: x == v, i)) if isinstance(i, Iterable) else i == v
 
 
 def gte(i, v):
-    if isinstance(i, Iterable):
-        return or_(map(lambda x: x >= v, i))
-    else:
-        return i >= v
+    return or_(map(lambda x: x >= v, i)) if isinstance(i, Iterable) else i >= v
 
 
 def lte(i, v):
-    if isinstance(i, Iterable):
-        return or_(map(lambda x: x <= v, i))
-    else:
-        return i <= v
+    return or_(map(lambda x: x <= v, i)) if isinstance(i, Iterable) else i <= v
 
 
 def map_(func, i):
-    if isinstance(i, Iterable):
-        if isinstance(i, Iterator):
-            return map(func, i)
-        else:
-            return [func(x) for x in i]
-    else:
-        return func(i)
+    return map(func, i) if isinstance(i, Iterable) else func(i)
+
+
+def list_(i):
+    return list(i) if isinstance(i, Iterable) else i
 
 
 if __name__ == '__main__':

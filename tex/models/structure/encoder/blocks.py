@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Type
-from tex.utils.functional import call_or_pass, gt, mul, is_odd, map_
+from tex.utils.functional import optional_function, gt, mul, is_odd, map_, list_
 
 
 class Block(nn.Module):
@@ -20,8 +20,8 @@ class Block(nn.Module):
             )
 
     def forward(self, x):  # pre-activation
-        return call_or_pass(
-            self.sub_method, self.net(x)) + call_or_pass(self.downsample, x)
+        return optional_function(self.sub_method, lambda i: i)(
+            self.net(x)) + optional_function(self.downsample, lambda i: i)(x)
 
 
 class BasicBlock(Block):
@@ -81,7 +81,7 @@ class CoTAttention(nn.Module):
     def __init__(self, d_model, d_hidden, kernel_size, stride=(1, 1)):
         super(CoTAttention, self).__init__()
         assert is_odd(kernel_size)
-        padding = map_(lambda x: (x - 1) // 2, kernel_size)  # padding与kernel_size绑定
+        padding = list_(map_(lambda x: (x - 1) // 2, kernel_size))
         self.alpha = mul(kernel_size)
         self.key_mapping = nn.Sequential(  # TODO: why groups
             nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),
@@ -103,7 +103,7 @@ class CoTAttention(nn.Module):
             self.downsample = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
-        x = call_or_pass(self.downsample, x)  # bs,c,h,w
+        x = optional_function(self.downsample, lambda i: i)(x)  # bs,c,h,w
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w
@@ -146,5 +146,5 @@ def make_layer(layers: int, block: Type[Block],
 
 if __name__ == '__main__':
     net = CoTBottleNeck(64, 32, (2, 2))
-    i = torch.randn((10, 64, 56, 56))
-    print(net(i).size())
+    t = torch.randn((10, 64, 56, 56))
+    print(net(t).size())
