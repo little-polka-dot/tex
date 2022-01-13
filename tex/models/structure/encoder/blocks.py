@@ -3,6 +3,9 @@ import torch.nn as nn
 from typing import Type
 
 
+def call(func, value): return func(value) if callable(func) else value
+
+
 class Block(nn.Module):
 
     expansion = 1
@@ -19,12 +22,8 @@ class Block(nn.Module):
                 nn.BatchNorm2d(planes * self.expansion),
             )
 
-    @staticmethod
-    def call(func, value):
-        return func(value) if callable(func) else value
-
     def forward(self, x):  # pre-activation
-        return self.call(self.sub_method, self.net(x)) + self.call(self.downsample, x)
+        return call(self.sub_method, self.net(x)) + call(self.downsample, x)
 
 
 class BasicBlock(Block):
@@ -60,10 +59,29 @@ class Bottleneck(Block):
         )
 
 
-class ContextualAttention(nn.Module):
+class BottleneckX(Block):
 
-    def __init__(self, d_model, d_hidden, kernel_size, padding=(0, 0)):
-        super(ContextualAttention, self).__init__()
+    expansion = 2
+
+    def __init__(self, in_planes, planes, stride=(1, 1), groups=32, sub=None):
+        super(BottleneckX, self).__init__(in_planes, planes, stride, sub)
+        self.net = nn.Sequential(
+            nn.BatchNorm2d(in_planes),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_planes, planes, (1, 1)),
+            nn.BatchNorm2d(planes),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(planes, planes, (3, 3), padding=(1, 1), stride=stride, groups=groups),
+            nn.BatchNorm2d(planes),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(planes, planes * self.expansion, (1, 1)),
+        )
+
+
+class CotAttention(nn.Module):
+
+    def __init__(self, d_model, d_hidden, kernel_size, stride=(1, 1), padding=(0, 0)):
+        super(CotAttention, self).__init__()
         assert kernel_size[0] % 2 and (kernel_size[0] - 1) // 2 == padding[0]
         assert kernel_size[1] % 2 and (kernel_size[1] - 1) // 2 == padding[1]
         self.alpha = kernel_size[0] * kernel_size[1]
@@ -82,8 +100,12 @@ class ContextualAttention(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(d_hidden, d_model * self.alpha, (1, 1))
         )
+        self.downsample = None
+        if stride[0] > 1 or stride[1] > 1:
+            self.downsample = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
+        x = call(self.downsample, x)
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w
@@ -99,31 +121,17 @@ class ContextualBlock(Block):
 
     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
         super(ContextualBlock, self).__init__(in_planes, planes, stride, sub)
-        if stride[0] > 1 or stride[1] > 1:
-            self.net = nn.Sequential(
-                nn.BatchNorm2d(in_planes),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_planes, planes, (1, 1)),
-                nn.BatchNorm2d(planes),
-                nn.ReLU(inplace=True),
-                nn.AvgPool2d((3, 3), stride=stride, padding=(1, 1)),
-                ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
-                nn.BatchNorm2d(planes),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(planes, planes * self.expansion, (1, 1)),
-            )
-        else:
-            self.net = nn.Sequential(
-                nn.BatchNorm2d(in_planes),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_planes, planes, (1, 1)),
-                nn.BatchNorm2d(planes),
-                nn.ReLU(inplace=True),
-                ContextualAttention(planes, planes, (3, 3), padding=(1, 1)),
-                nn.BatchNorm2d(planes),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(planes, planes * self.expansion, (1, 1)),
-            )
+        self.net = nn.Sequential(
+            nn.BatchNorm2d(in_planes),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_planes, planes, (1, 1)),
+            nn.BatchNorm2d(planes),
+            nn.ReLU(inplace=True),
+            CotAttention(planes, planes, (3, 3), stride=stride, padding=(1, 1)),
+            nn.BatchNorm2d(planes),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(planes, planes * self.expansion, (1, 1)),
+        )
 
 
 def make_layer(layers: int, block: Type[Block],
