@@ -20,11 +20,11 @@ class Block(nn.Module):
             )
 
     @staticmethod
-    def call(value, func=None):
+    def call(func, value):
         return func(value) if callable(func) else value
 
     def forward(self, x):  # pre-activation
-        return self.call(self.net(x), self.sub_method) + self.call(x, self.downsample)
+        return self.call(self.sub_method, self.net(x)) + self.call(self.downsample, x)
 
 
 class BasicBlock(Block):
