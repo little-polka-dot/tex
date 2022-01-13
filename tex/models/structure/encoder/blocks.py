@@ -1,9 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Type
-
-
-def call_or_pass(func, value): return func(value) if callable(func) else value
+from tex.utils.functional import call_or_pass, gt, mul, is_odd, map_
 
 
 class Block(nn.Module):
@@ -12,10 +10,9 @@ class Block(nn.Module):
 
     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
         super(Block, self).__init__()
-        assert stride[0] > 0 and stride[1] > 0
         self.sub_method = sub
         self.downsample = None
-        if (stride[0] > 1 or stride[1] > 1) or (in_planes != planes * self.expansion):
+        if gt(stride, 1) or in_planes != planes * self.expansion:
             self.downsample = nn.Sequential(
                 nn.Conv2d(
                     in_planes, planes * self.expansion, (1, 1), stride=stride, bias=False),
@@ -41,12 +38,12 @@ class BasicBlock(Block):
         )
 
 
-class Bottleneck(Block):
+class BottleNeck(Block):
 
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
-        super(Bottleneck, self).__init__(in_planes, planes, stride, sub)
+        super(BottleNeck, self).__init__(in_planes, planes, stride, sub)
         self.net = nn.Sequential(
             nn.BatchNorm2d(in_planes),
             nn.ReLU(inplace=True),
@@ -60,12 +57,12 @@ class Bottleneck(Block):
         )
 
 
-class BottleneckX(Block):
+class BottleNeckX(Block):
 
     expansion = 2
 
     def __init__(self, in_planes, planes, stride=(1, 1), groups=32, sub=None):
-        super(BottleneckX, self).__init__(in_planes, planes, stride, sub)
+        super(BottleNeckX, self).__init__(in_planes, planes, stride, sub)
         self.net = nn.Sequential(
             nn.BatchNorm2d(in_planes),
             nn.ReLU(inplace=True),
@@ -79,13 +76,13 @@ class BottleneckX(Block):
         )
 
 
-class CotAttention(nn.Module):
+class CoTAttention(nn.Module):
 
-    def __init__(self, d_model, d_hidden, kernel_size, stride=(1, 1), padding=(0, 0)):
-        super(CotAttention, self).__init__()
-        assert kernel_size[0] % 2 and (kernel_size[0] - 1) // 2 == padding[0]
-        assert kernel_size[1] % 2 and (kernel_size[1] - 1) // 2 == padding[1]
-        self.alpha = kernel_size[0] * kernel_size[1]
+    def __init__(self, d_model, d_hidden, kernel_size, stride=(1, 1)):
+        super(CoTAttention, self).__init__()
+        assert is_odd(kernel_size)
+        padding = map_(lambda x: (x - 1) // 2, kernel_size)  # padding与kernel_size绑定
+        self.alpha = mul(kernel_size)
         self.key_mapping = nn.Sequential(  # TODO: why groups
             nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),
             nn.BatchNorm2d(d_model),
@@ -102,11 +99,11 @@ class CotAttention(nn.Module):
             nn.Conv2d(d_hidden, d_model * self.alpha, (1, 1))
         )
         self.downsample = None
-        if stride[0] > 1 or stride[1] > 1:
+        if gt(stride, 1):
             self.downsample = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
-        x = call_or_pass(self.downsample, x)
+        x = call_or_pass(self.downsample, x)  # bs,c,h,w
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w
@@ -116,19 +113,19 @@ class CotAttention(nn.Module):
         return k_1 + k_2.view(*x.size())  # bs,c,h,w
 
 
-class ContextualBlock(Block):
+class CoTBottleNeck(Block):
 
     expansion = 4
 
     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
-        super(ContextualBlock, self).__init__(in_planes, planes, stride, sub)
+        super(CoTBottleNeck, self).__init__(in_planes, planes, stride, sub)
         self.net = nn.Sequential(
             nn.BatchNorm2d(in_planes),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_planes, planes, (1, 1)),
             nn.BatchNorm2d(planes),
             nn.ReLU(inplace=True),
-            CotAttention(planes, planes, (3, 3), stride=stride, padding=(1, 1)),
+            CoTAttention(planes, planes, (3, 3), stride=stride),
             nn.BatchNorm2d(planes),
             nn.ReLU(inplace=True),
             nn.Conv2d(planes, planes * self.expansion, (1, 1)),
@@ -148,6 +145,6 @@ def make_layer(layers: int, block: Type[Block],
 
 
 if __name__ == '__main__':
-    net = ContextualBlock(64, 32, (2, 2))
+    net = CoTBottleNeck(64, 32, (2, 2))
     i = torch.randn((10, 64, 56, 56))
     print(net(i).size())

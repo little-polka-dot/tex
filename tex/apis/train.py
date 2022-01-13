@@ -35,7 +35,7 @@ def test():
             'im_channels': 1,  # encoder输入图层数
             'd_model': 512,  # 向量维度
             'enc_layers': [3, 4, 6, 3],
-            'enc_block': 'Bottleneck',
+            'enc_block': 'CoTBottleNeck',
             'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
             'n_vocab': 9,  # 表结构描述语言词汇量
             'seq_len': 256,  # decoder序列长度
