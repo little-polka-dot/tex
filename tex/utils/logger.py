@@ -4,7 +4,7 @@ import logging
 class TexLogger(logging.Logger):
 
     __logger_name__ = 'tex'
-    __console_format__ = '[%(levelname)s] [%(asctime)s] %(message)s'
+    __console_format__ = '[%(asctime)s] [%(levelname)s] %(message)s'
     __console_level__ = 'INFO'
 
     @classmethod
@@ -23,4 +23,6 @@ class TexLogger(logging.Logger):
 
 
 if __name__ == '__main__':
+    TexLogger.logger().info('test message')
+    TexLogger.logger().info('test message')
     TexLogger.logger().info('test message')

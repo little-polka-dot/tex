@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from tex.models.structure.encoder import blocks
-from tex.models.structure.encoder import gc
+from tex.models.structure.encoder import subnet
 
 
 class EncoderPreprocess(nn.Module):
@@ -33,7 +33,7 @@ class Encoder(nn.Module):
                 d_layer[0],
                 d_layer[0],
                 stride=(1, 1),
-                sub=gc.GlobalContextBlock(
+                sub=subnet.GlobalContextBlock(
                     d_layer[0] * block.expansion, d_layer[0] * block.expansion)
             ),
             blocks.make_layer(
@@ -42,7 +42,7 @@ class Encoder(nn.Module):
                 d_layer[0] * block.expansion,
                 d_layer[1],
                 stride=(2, 2),
-                sub=gc.GlobalContextBlock(
+                sub=subnet.GlobalContextBlock(
                     d_layer[1] * block.expansion, d_layer[1] * block.expansion)
             ),
             blocks.make_layer(
@@ -51,7 +51,7 @@ class Encoder(nn.Module):
                 d_layer[1] * block.expansion,
                 d_layer[2],
                 stride=(2, 2),
-                sub=gc.GlobalContextBlock(
+                sub=subnet.GlobalContextBlock(
                     d_layer[2] * block.expansion, d_layer[2] * block.expansion)
             ),
             blocks.make_layer(
@@ -60,7 +60,7 @@ class Encoder(nn.Module):
                 d_layer[2] * block.expansion,
                 d_layer[3],
                 stride=(2, 2),
-                sub=gc.GlobalContextBlock(
+                sub=subnet.GlobalContextBlock(
                     d_layer[3] * block.expansion, d_layer[3] * block.expansion)
             ),
         ])

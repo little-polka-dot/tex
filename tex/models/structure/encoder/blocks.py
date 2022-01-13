@@ -63,8 +63,10 @@ class Bottleneck(Block):
 
 class ContextualAttention(nn.Module):
 
-    def __init__(self, d_model, d_hidden, kernel_size, padding=(1, 1)):
+    def __init__(self, d_model, d_hidden, kernel_size, padding=(0, 0)):
         super(ContextualAttention, self).__init__()
+        assert kernel_size[0] % 2 and (kernel_size[0] - 1) // 2 == padding[0]
+        assert kernel_size[1] % 2 and (kernel_size[1] - 1) // 2 == padding[1]
         self.alpha = kernel_size[0] * kernel_size[1]
         self.key_mapping = nn.Sequential(  # TODO: why groups
             nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),
