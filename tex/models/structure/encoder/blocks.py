@@ -20,12 +20,11 @@ class Block(nn.Module):
             )
 
     @staticmethod
-    def call_or_pass(value, func=None):
+    def call(value, func=None):
         return func(value) if callable(func) else value
 
     def forward(self, x):  # pre-activation
-        return self.call_or_pass(
-            self.net(x), self.sub_method) + self.call_or_pass(x, self.downsample)
+        return self.call(self.net(x), self.sub_method) + self.call(x, self.downsample)
 
 
 class BasicBlock(Block):
