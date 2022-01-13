@@ -3,7 +3,7 @@ import torch.nn as nn
 from typing import Type
 
 
-def call(func, value): return func(value) if callable(func) else value
+def call_or_pass(func, value): return func(value) if callable(func) else value
 
 
 class Block(nn.Module):
@@ -23,7 +23,8 @@ class Block(nn.Module):
             )
 
     def forward(self, x):  # pre-activation
-        return call(self.sub_method, self.net(x)) + call(self.downsample, x)
+        return call_or_pass(
+            self.sub_method, self.net(x)) + call_or_pass(self.downsample, x)
 
 
 class BasicBlock(Block):
@@ -105,7 +106,7 @@ class CotAttention(nn.Module):
             self.downsample = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
-        x = call(self.downsample, x)
+        x = call_or_pass(self.downsample, x)
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w
