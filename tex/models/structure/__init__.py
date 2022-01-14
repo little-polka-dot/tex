@@ -11,7 +11,7 @@ class BackboneStructure(nn.Module):
 
         from tex.models.structure.encoder import BackboneEncoder as Encoder
         from tex.models.structure.decoder import Decoder
-        from tex.models.structure.attention import PositionalEncoding
+        from tex.models.transformer.attention import PositionalEncoding
 
         self.enc_net = nn.Sequential(
             Encoder(

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from tex.models.structure import attention
+from tex.models.transformer import attention
 
 
 class Decoder(nn.Module):

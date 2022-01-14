@@ -79,26 +79,47 @@ def test():
 
 
 if __name__ == '__main__':
-    net = builder.build_from_settings({
-        'class': 'tex.models.structure.BackboneStructure',
-        'im_channels': 1,  # encoder输入图层数
-        'd_model': 512,  # 向量维度
-        'enc_layers': [3, 4, 6, 3],
-        'enc_block': 'CoTBottleNeck',
-        'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
-        'n_vocab': 9,  # 表结构描述语言词汇量
-        'seq_len': 10,  # decoder序列长度
-        'n_head': 8,
-        'd_k': 128,
-        'dec_layers': 5,
-        'dec_sp_layers': 1,
-        'd_ffn': 1024,
-        'dropout': 0.1,
-        'dec_n_pos': 256,  # 须大于等于seq_len
-        'pad_idx': 0,
-    })
-    from tex.models.structure.attention import sos
-    i = torch.randn((3, 1, 224, 224))
+    # net = builder.build_from_settings({
+    #     'class': 'tex.models.structure.BackboneStructure',
+    #     'im_channels': 1,  # encoder输入图层数
+    #     'd_model': 512,  # 向量维度
+    #     'enc_layers': [3, 4, 6, 3],
+    #     'enc_block': 'CoTBottleNeck',
+    #     'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
+    #     'n_vocab': 9,  # 表结构描述语言词汇量
+    #     'seq_len': 10,  # decoder序列长度
+    #     'n_head': 8,
+    #     'd_k': 128,
+    #     'dec_layers': 5,
+    #     'dec_sp_layers': 1,
+    #     'd_ffn': 1024,
+    #     'dropout': 0.1,
+    #     'dec_n_pos': 256,  # 须大于等于seq_len
+    #     'pad_idx': 0,
+    # })
+    # from tex.models.structure.attention import sos
+    # i = torch.randn((3, 1, 224, 224))
+    # net.eval()
+    # o = net(i, sos(3, 8))
+    # print(o[0].size())
+    # print(o[1].size())
+    net = builder.build_from_settings({'class':'tex.models.structure.TransformerStructure',**dict(
+        d_input=4,
+        d_model=128,
+        enc_layers=4,
+        n_vocab=9,
+        seq_len=11,
+        n_head=8,
+        d_k=32,
+        d_ffn=32,
+        dec_n_pos=512,
+        dec_layers=3,
+        dec_sp_layers=1,
+        pad_idx=0,
+        dropout=0.1
+    )})
+    from tex.models.transformer.attention import sos
+    i = torch.randn((3, 11, 4))
     net.eval()
     o = net(i, sos(3, 8))
     print(o[0].size())

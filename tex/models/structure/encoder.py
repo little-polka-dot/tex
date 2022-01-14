@@ -3,7 +3,7 @@ import torch.nn as nn
 from typing import Type, Union
 from tex.utils.functional import optional_function
 from tex.utils.functional import gt, mul, is_odd, map_, list_
-from tex.models.structure import attention
+from tex.models.transformer import attention
 
 
 class Block(nn.Module):
@@ -277,7 +277,7 @@ class BackboneEncoder(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    """ 输入从PDF解析出来的坐标数据 """
+    """ 输入从PDF解析出来的坐标数据 (X,Y,W,H) d_input=4"""
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(TransformerEncoder, self).__init__()
