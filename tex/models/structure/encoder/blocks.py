@@ -58,6 +58,7 @@ class BottleNeck(Block):
 
 
 class BottleNeckX(Block):
+    """ ResNeXt Block """
 
     expansion = 2
 
@@ -80,10 +81,10 @@ class CoTAttention(nn.Module):
 
     def __init__(self, d_model, d_hidden, kernel_size, stride=(1, 1)):
         super(CoTAttention, self).__init__()
-        assert is_odd(kernel_size)
+        assert is_odd(kernel_size)  # 卷积尺度必须为奇数
         padding = list_(map_(lambda x: (x - 1) // 2, kernel_size))
         self.kernel_size = kernel_size
-        self.key_mapping = nn.Sequential(  # TODO: why groups
+        self.key_mapping = nn.Sequential(  # TODO: conv groups=4 ?
             nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),
             nn.BatchNorm2d(d_model),
             nn.ReLU(inplace=True)
@@ -98,12 +99,12 @@ class CoTAttention(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(d_hidden, d_model * mul(kernel_size), (1, 1))
         )
-        self.downsample = None
+        self.pool = None
         if gt(stride, 1):
-            self.downsample = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
+            self.pool = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
-        x = optional_function(self.downsample, lambda i: i)(x)  # bs,c,h,w
+        x = optional_function(self.pool, lambda i: i)(x)  # bs,c,h,w
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w

@@ -3,7 +3,17 @@ from typing import Iterable
 
 
 def optional_function(func, default=None):
-    return func if callable(func) else (default if callable(default) else (lambda *w, **kw: None))
+    """
+    >> func: Callable
+    >> func_default: Callable
+    >> optional_function(func, func_default) == func
+    True
+    >> func = None
+    >> optional_function(func, func_default) == func_default
+    True
+    """
+    return func if callable(func) else (
+        default if callable(default) else (lambda *w, **kw: None))
 
 
 def and_(*__iter):

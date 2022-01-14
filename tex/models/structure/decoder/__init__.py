@@ -88,10 +88,10 @@ class Decoder(nn.Module):
             return self.greedy_decode(dec_input, enc_value)
 
 
-if __name__ == '__main__':
-    x = torch.randn((2, 6, 3))
-    print(x)
-    print('1', torch.max(x, dim=-1)[1])
-    print('2', torch.argmax(x, dim=-1))
-
-    print(torch.argmax(x, dim=-1).eq(torch.max(x, dim=-1)[1]).sum()/12)
+# if __name__ == '__main__':
+#     x = torch.randn((2, 6, 3))
+#     print(x)
+#     print('1', torch.max(x, dim=-1)[1])
+#     print('2', torch.argmax(x, dim=-1))
+#
+#     print(torch.argmax(x, dim=-1).eq(torch.max(x, dim=-1)[1]).sum()/12)
