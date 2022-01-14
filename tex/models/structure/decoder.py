@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from tex.models.structure.decoder import attention
+from tex.models.structure import attention
 
 
 def pad_mask(x, pad_idx=0):

@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Type
+from typing import Type, Union
 from tex.utils.functional import optional_function, gt, mul, is_odd, map_, list_
 
 
@@ -145,7 +145,136 @@ def make_layer(layers: int, block: Type[Block],
     )
 
 
+class ContextModeling(nn.Module):
+
+    def __init__(self, channels):
+        super(ContextModeling, self).__init__()
+        self.score_conv = nn.Conv2d(channels, 1, (1, 1))
+
+    def forward(self, x):  # x: [batch_size, c, h, w]
+        score = self.score_conv(x).view(x.size(0), 1, -1)  # [batch_size, 1, h*w]
+        score = torch.softmax(score, dim=-1).unsqueeze(-1)  # [batch_size, 1, h*w, 1]
+        x = x.view(x.size(0), x.size(1), -1).unsqueeze(1)  # [batch_size, 1, c, h*w]
+        return torch.matmul(x, score).transpose(1, 2)  # [batch_size, c, 1, 1]
+
+
+class ContextTransformer(nn.Module):
+
+    def __init__(self, channels, d_hidden):
+        super(ContextTransformer, self).__init__()
+        self.conv_1 = nn.Conv2d(channels, d_hidden, (1, 1))
+        self.layer_norm = nn.LayerNorm(d_hidden)
+        self.conv_2 = nn.Conv2d(d_hidden, channels, (1, 1))
+
+    def forward(self, x):
+        return self.conv_2(  # [batch_size, channels, 1, 1]
+            torch.relu(  # [batch_size, d_hidden, 1, 1]
+                self.layer_norm(
+                    self.conv_1(x).view(x.size(0), -1))  # [batch_size, d_hidden]
+            ).unsqueeze(-1).unsqueeze(-1)
+        )
+
+
+class GlobalContextBlock(nn.Module):
+
+    def __init__(self, channels, d_hidden):
+        super(GlobalContextBlock, self).__init__()
+        self.net = nn.Sequential(
+            ContextModeling(channels), ContextTransformer(channels, d_hidden))
+
+    def forward(self, x): return x + self.net(x)
+
+
+class BackbonePreprocess(nn.Module):
+
+    def __init__(self, d_input, d_model):
+        super(BackbonePreprocess, self).__init__()
+        # TODO: diff between 7x7 and 3x3
+        self.net = nn.Sequential(
+            nn.Conv2d(d_input, d_model, (7, 7), stride=(2, 2), padding=(3, 3)),
+            nn.BatchNorm2d(d_model),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d((3, 3), stride=(2, 2), padding=(1, 1)),
+            nn.Conv2d(d_model, d_model, (1, 1), bias=False)
+        )
+
+    def forward(self, x): return self.net(x)
+
+
+class BackboneEncoder(nn.Module):
+
+    def __init__(self, d_input, d_model,
+                 block: Union[Block, str], layers, d_layer=(64, 128, 256, 512)):
+        super(BackboneEncoder, self).__init__()
+        if isinstance(block, str): block = globals()[block]
+        self.pre_layer = BackbonePreprocess(d_input, d_layer[0])
+        self.layers = nn.ModuleList([
+            make_layer(
+                layers[0],
+                block,
+                d_layer[0],
+                d_layer[0],
+                stride=(1, 1),
+                sub=GlobalContextBlock(
+                    d_layer[0] * block.expansion, d_layer[0] * block.expansion)
+            ),
+            make_layer(
+                layers[1],
+                block,
+                d_layer[0] * block.expansion,
+                d_layer[1],
+                stride=(2, 2),
+                sub=GlobalContextBlock(
+                    d_layer[1] * block.expansion, d_layer[1] * block.expansion)
+            ),
+            make_layer(
+                layers[2],
+                block,
+                d_layer[1] * block.expansion,
+                d_layer[2],
+                stride=(2, 2),
+                sub=GlobalContextBlock(
+                    d_layer[2] * block.expansion, d_layer[2] * block.expansion)
+            ),
+            make_layer(
+                layers[3],
+                block,
+                d_layer[2] * block.expansion,
+                d_layer[3],
+                stride=(2, 2),
+                sub=GlobalContextBlock(
+                    d_layer[3] * block.expansion, d_layer[3] * block.expansion)
+            ),
+        ])
+        self.layers_map = nn.ModuleList([
+            nn.Conv2d(
+                d_layer[1] * block.expansion, d_model, (1, 1), bias=False),
+            nn.Conv2d(
+                d_layer[2] * block.expansion, d_model, (1, 1), bias=False),
+            nn.Conv2d(
+                d_layer[3] * block.expansion, d_model, (1, 1), bias=False)
+        ])
+
+    def forward(self, x):
+        """
+        将细粒度，中粒度，粗粒度三个特征图合并为一个向量
+        输出： [batch_size, img_len(取决于输入图像的size), d_model]
+        """
+        x = self.pre_layer(x)
+        output = None
+        for idx, layer in enumerate(self.layers):
+            x = layer(x)
+            if idx > 0:
+                vec = self.layers_map[idx - 1](x)
+                vec = vec.view(vec.size(0), vec.size(1), -1)
+                if output is None:
+                    output = vec
+                else:
+                    output = torch.cat((output, vec), -1)
+        return output.transpose(1, 2)
+
+
 if __name__ == '__main__':
-    net = CoTBottleNeck(64, 32, (2, 2))
-    t = torch.randn((10, 64, 56, 56))
-    print(net(t).size())
+    net = BackboneEncoder(1, 256, 'BasicBlock', [3, 4, 6, 3])
+    i = torch.randn((10, 1, 224, 224))
+    print(net(i).size())

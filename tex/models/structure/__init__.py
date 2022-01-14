@@ -1,19 +1,19 @@
 import torch.nn as nn
-from tex.models.structure.encoder import Encoder
+from tex.models.structure.encoder import BackboneEncoder
 from tex.models.structure.decoder import Decoder
-from tex.models.structure.decoder.attention import PositionalEncoding
+from tex.models.structure.attention import PositionalEncoding
 
 
-class TexStructure(nn.Module):
+class BackboneStructure(nn.Module):
 
     def __init__(self, im_channels, d_model, enc_block, enc_layers,
                  n_vocab, seq_len, n_head, d_k, d_ffn, enc_n_pos, dec_n_pos,
                  dec_layers=3, dec_sp_layers=1, pad_idx=0, dec_dropout=0.1):
 
-        super(TexStructure, self).__init__()
+        super(BackboneStructure, self).__init__()
 
         self.enc_net = nn.Sequential(
-            Encoder(
+            BackboneEncoder(
                 d_input=im_channels,
                 d_model=d_model,
                 block=enc_block,

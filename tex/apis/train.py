@@ -31,7 +31,7 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
 def test():
     settings = {
         'model': {
-            'class': 'tex.models.structure.TexStructure',
+            'class': 'tex.models.structure.BackboneStructure',
             'im_channels': 1,  # encoder输入图层数
             'd_model': 512,  # 向量维度
             'enc_layers': [3, 4, 6, 3],
