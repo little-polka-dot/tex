@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 from typing import Type, Union
-from tex.utils.functional import optional_function, gt, mul, is_odd, map_, list_
+from tex.utils.functional import optional_function
+from tex.utils.functional import gt, mul, is_odd, map_, list_
+from tex.models.structure import attention
 
 
 class Block(nn.Module):
@@ -274,7 +276,63 @@ class BackboneEncoder(nn.Module):
         return output.transpose(1, 2)
 
 
+class TransformerEncoder(nn.Module):
+    """ 输入从PDF解析出来的坐标数据 """
+
+    def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
+        super(TransformerEncoder, self).__init__()
+        self.pre_pipe = nn.Sequential(
+            nn.Linear(d_input, d_model, bias=False),
+            nn.ReLU(inplace=True),
+            nn.LayerNorm(d_model),
+            nn.Linear(d_model, d_model, bias=False),
+            nn.Dropout(dropout),
+        )
+        self.layers = nn.ModuleList([
+            attention.EncodeLayer(
+                d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
+        ])
+
+    @staticmethod
+    def enc_mask(x):
+        """ X >= 0 & Y >= 0 & (W > 0 | H > 0) """
+        # [batch_size, sql_len, 4] -> [batch_size, 1, sql_len]
+        return ((x[:, :, 0] >= 0) & (x[:, :, 1] >= 0) & (
+                (x[:, :, 2] > 0) | (x[:, :, 3] > 0))).unsqueeze(-2).to(x.device)
+
+    def forward(self, x):
+        m = self.enc_mask(x)
+        x = self.pre_pipe(x)
+        for layer in self.layers:
+            x = layer(x, m)
+        return x, m  # [bs, seq, dim]
+
+
 if __name__ == '__main__':
-    net = BackboneEncoder(1, 256, 'BasicBlock', [3, 4, 6, 3])
-    i = torch.randn((10, 1, 224, 224))
-    print(net(i).size())
+    # net = BackboneEncoder(1, 256, 'BasicBlock', [3, 4, 6, 3])
+    # i = torch.randn((10, 1, 224, 224))
+    # print(net(i).size())
+    # net = TransformerEncoder(4, 128, 8, 32, 4)
+    # t = torch.randn((11, 40, 4))
+    # print(net(t).size())
+    # t = torch.cat((torch.abs(torch.randn((2, 5, 4))), torch.zeros((2, 3, 4))), dim=1)
+    # print(t)
+    # print((t[:, :, 2] * t[:, :, 3] <= 0).size())
+    i = torch.tensor([[[ 0.3677,  1.9821, -1.7504, -0.3344],
+         [-0.0947, -0.0717, -0.4757,  0.6903],
+         [ 0.1778,  0.9535,  0,  0],
+         [-1.1163, -0.3333,  0.2172,  2.0513],
+         [-1.2663, -1.9714, -1.3209,  0.0366]],
+
+        [[ 1.5173,  2.1045, 0,  0],
+         [-1.0373, -0.5103,  0.3331,  0.8718],
+         [ 0.5383,  0.9850, -0.9056, -1.2403],
+         [ 0.1221,  1.2144,  0.5437,  0.7019],
+         [-0.4992,  0.8216,  2.0324,  1.2080]],
+
+        [[-1.7148, -1.1314, -0.7211,  1.4601],
+         [-1.4436, -0.9689, -1.0274,  1.3438],
+         [-0.7712, -0.0175, -2.8958,  1.0208],
+         [-0.7913, -1.2262,  2.4288, -0.8707],
+         [-0.5462, 0, 0, 0]]])
+    print(TransformerEncoder.enc_mask(i))

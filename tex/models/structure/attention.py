@@ -149,6 +149,26 @@ class PositionalEncoding(nn.Module):
         return x + self.position_table[:, :x.size(1)].clone().detach()
 
 
+def pad_mask(x, pad_idx=0):
+    # [batch_size, sql_len] -> [batch_size, 1, sql_len]
+    return (x != pad_idx).unsqueeze(-2).to(x.device)
+
+
+def sub_mask(x, pad_idx=0):
+    """ 对角mask """
+    # [batch_size, sql_len] -> [batch_size, sql_len, sql_len]
+    return pad_mask(x, pad_idx) & (torch.tril(torch.ones((
+        1, x.size(1), x.size(1)), device=x.device))).bool()
+
+
+def sos(batch_size, sos_idx, device=None):  # [batch_size, 1]
+    """
+    初始化decoder输入数据
+    """
+    return torch.tensor(
+        [sos_idx] * batch_size).unsqueeze(-1).to(device)
+
+
 if __name__ == '__main__':
     n = PositionalEncoding(16, 100)
     xi = torch.zeros((1, 10, 16))
