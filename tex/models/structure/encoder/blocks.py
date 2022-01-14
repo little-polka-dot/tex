@@ -82,7 +82,7 @@ class CoTAttention(nn.Module):
         super(CoTAttention, self).__init__()
         assert is_odd(kernel_size)
         padding = list_(map_(lambda x: (x - 1) // 2, kernel_size))
-        self.alpha = mul(kernel_size)
+        self.kernel_size = kernel_size
         self.key_mapping = nn.Sequential(  # TODO: why groups
             nn.Conv2d(d_model, d_model, kernel_size, padding=padding, bias=False),
             nn.BatchNorm2d(d_model),
@@ -96,7 +96,7 @@ class CoTAttention(nn.Module):
             nn.Conv2d(2 * d_model, d_hidden, (1, 1), bias=False),
             nn.BatchNorm2d(d_hidden),
             nn.ReLU(inplace=True),
-            nn.Conv2d(d_hidden, d_model * self.alpha, (1, 1))
+            nn.Conv2d(d_hidden, d_model * mul(kernel_size), (1, 1))
         )
         self.downsample = None
         if gt(stride, 1):
@@ -107,7 +107,7 @@ class CoTAttention(nn.Module):
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w
-        atn = atn.view(x.size(0), x.size(1), self.alpha, x.size(2), x.size(3))
+        atn = atn.view(x.size(0), x.size(1), mul(self.kernel_size), x.size(2), x.size(3))
         atn = atn.mean(2, keepdim=False).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         k_2 = torch.softmax(atn, dim=-1) * val  # bs,c,h*w
         return k_1 + k_2.view(*x.size())  # bs,c,h,w
