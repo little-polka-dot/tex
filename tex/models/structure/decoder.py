@@ -38,13 +38,16 @@ class Decoder(nn.Module):
             )
         )
         for layer in self.h_decoders:
-            out_x = layer(out_x, enc_value, slf_mask=slf_m, enc_mask=mask)
+            out_x = layer(
+                out_x, enc_value, slf_mask=slf_m, enc_mask=mask)
         cls_x, box_x = out_x, out_x
         for layer in self.c_decoders:
-            cls_x = layer(cls_x, enc_value, slf_mask=slf_m, enc_mask=mask)
+            cls_x = layer(
+                cls_x, enc_value, slf_mask=slf_m, enc_mask=mask)
         cls_x = self.cls_fc(cls_x)
         for layer in self.b_decoders:
-            box_x = layer(box_x, enc_value, slf_mask=slf_m, enc_mask=mask)
+            box_x = layer(
+                box_x, enc_value, slf_mask=slf_m, enc_mask=mask)
         box_x = self.box_fc(box_x)
         return cls_x, torch.sigmoid(box_x)
 
