@@ -12,8 +12,8 @@ def optional_function(func, default=None):
     >> optional_function(func, func_default) == func_default
     True
     """
-    return func if callable(func) else (
-        default if callable(default) else (lambda *w, **kw: None))
+    assert callable(func) or callable(default)
+    return func if callable(func) else default
 
 
 def and_(*__iter):
