@@ -284,9 +284,9 @@ class TransformerEncoder(nn.Module):
         self.pre_pipe = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),
-            nn.LayerNorm(d_model),
             nn.Linear(d_model, d_model, bias=False),
             nn.Dropout(dropout),
+            nn.LayerNorm(d_model),
         )
         self.layers = nn.ModuleList([
             attention.EncodeLayer(
