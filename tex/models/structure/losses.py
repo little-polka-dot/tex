@@ -46,7 +46,7 @@ def jaccard(box_a, box_b):
     return inter / union  # [A,B]
 
 
-def box_transformer(
+def box_transform(
         x, reverse=False, inplace=False):
     """
     reverse = False
@@ -121,8 +121,8 @@ def iou_loss(output, target, is_transform=True):
     如果坐标为x,y,w,h格式 则将is_transform设置为True
     """
     if is_transform:
-        target = box_transformer(target)  # [seq_len, 4]
-        output = box_transformer(output)  # [seq_len, 4]
+        target = box_transform(target)  # [seq_len, 4]
+        output = box_transform(output)  # [seq_len, 4]
     iou = torch.diag(
         jaccard(target_masked(target), output))  # [seq_len]
     # yield torch.nanmean(-torch.log(iou))  # inf会导致模型无法拟合
@@ -132,8 +132,8 @@ def iou_loss(output, target, is_transform=True):
 def distance_iou_loss(output, target, is_transform=True):
     """ DIoU """
     if is_transform:
-        target = box_transformer(target)  # [seq_len, 4]
-        output = box_transformer(output)  # [seq_len, 4]
+        target = box_transform(target)  # [seq_len, 4]
+        output = box_transform(output)  # [seq_len, 4]
     iou = torch.diag(
         jaccard(target_masked(target), output))  # [seq_len]
     dcn = center_distance(target, output)
@@ -145,8 +145,8 @@ def distance_iou_loss(output, target, is_transform=True):
 def complete_iou_loss(output, target, is_transform=True):
     """ CIoU """
     if is_transform:
-        target = box_transformer(target)  # [seq_len, 4]
-        output = box_transformer(output)  # [seq_len, 4]
+        target = box_transform(target)  # [seq_len, 4]
+        output = box_transform(output)  # [seq_len, 4]
     iou = torch.diag(
         jaccard(target_masked(target), output))  # [seq_len]
     dcn = center_distance(target, output)  # 中心距离
