@@ -154,11 +154,10 @@ def pad_mask(x, pad_idx=0):
     return (x != pad_idx).unsqueeze(-2).to(x.device)
 
 
-def sub_mask(x, pad_idx=0):
+def subsequent_mask(x):
     """ 对角掩码矩阵 """
     # [batch_size, sql_len] -> [batch_size, sql_len, sql_len]
-    return pad_mask(x, pad_idx) & (torch.tril(torch.ones((
-        1, x.size(1), x.size(1)), device=x.device))).bool()
+    return (torch.tril(torch.ones((1, x.size(1), x.size(1)), device=x.device))).bool()
 
 
 def sos(batch_size, sos_idx, device=None):  # [batch_size, 1]
