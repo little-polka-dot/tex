@@ -40,6 +40,7 @@ class StructureTransformer(object):
         # TODO 图片的随机resize
         description = StructLang.from_object(y_data['description'])
         cut_len = random.randint(1, description.size + 1)  # 随机截断表格描述语句(用于模型训练)
+        # TODO 无须随机截断 对于transformer来说没有意义
         seq_labels = np.array(description.labels(self._seq_len, False, True, cut_len))
         seq_inputs = np.array(description.labels(self._seq_len, True, False, cut_len))
 
