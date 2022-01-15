@@ -77,7 +77,7 @@ class TransformerStructure(nn.Module):
         )
 
     def forward(self, enc_input, dec_input):
-        enc_value, mask = self.enc_net(enc_input)
+        enc_value, enc_mask = self.enc_net(enc_input)
         return self.dec_net(
-            dec_input, enc_value, mask=mask)
+            dec_input, enc_value, enc_mask=enc_mask)
 
