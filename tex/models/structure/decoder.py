@@ -29,7 +29,8 @@ class Decoder(nn.Module):
         self.pad_idx, self.d_model, self.seq_len = pad_idx, d_model, seq_len
 
     def decode(self, dec_input, enc_value, enc_mask=None):
-        slf_m = attention.sub_mask(dec_input, self.pad_idx)
+        slf_m = attention.pad_mask(
+            dec_input, self.pad_idx) & attention.subsequent_mask(dec_input)
         out_x = self.norm(self.dropout(
             self.pos_enc(self.embedding(dec_input) * (self.d_model ** 0.5))))
         for layer in self.h_decoders:
