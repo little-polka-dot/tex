@@ -4,7 +4,7 @@ import torch.nn as nn
 class BackboneStructure(nn.Module):
 
     def __init__(self, im_channels, d_model, enc_block, enc_layers,
-                 n_vocab, seq_len, n_head, d_k, d_ffn, enc_n_pos, dec_n_pos,
+                 n_vocab, dec_len, n_head, d_k, d_ffn, enc_n_pos, dec_n_pos,
                  dec_layers, dec_sp_layers=1, pad_idx=0, dropout=0.1):
 
         super(BackboneStructure, self).__init__()
@@ -25,7 +25,7 @@ class BackboneStructure(nn.Module):
 
         self.dec_net = Decoder(
             n_vocab=n_vocab,
-            seq_len=seq_len,
+            seq_len=dec_len,
             d_model=d_model,
             n_head=n_head,
             d_k=d_k,
@@ -43,7 +43,7 @@ class BackboneStructure(nn.Module):
 
 class TransformerStructure(nn.Module):
 
-    def __init__(self, d_input, d_model, enc_layers, n_vocab, seq_len,
+    def __init__(self, d_input, d_model, enc_layers, n_vocab, dec_len,
                  n_head, d_k, d_ffn, dec_n_pos,
                  dec_layers, dec_sp_layers=1, pad_idx=0, dropout=0.1):
 
@@ -64,7 +64,7 @@ class TransformerStructure(nn.Module):
 
         self.dec_net = Decoder(
             n_vocab=n_vocab,
-            seq_len=seq_len,
+            seq_len=dec_len,
             d_model=d_model,
             n_head=n_head,
             d_k=d_k,
