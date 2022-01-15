@@ -12,6 +12,7 @@ def optional_function(func, default=None):
     >> optional_function(func, func_default) == func_default
     True
     """
+    if default is None: default = lambda *w, **kw: None
     assert callable(func) or callable(default)
     return func if callable(func) else default
 
