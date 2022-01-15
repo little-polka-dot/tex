@@ -293,19 +293,19 @@ class TransformerEncoder(nn.Module):
                 d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
         ])
 
-    @staticmethod
-    def enc_mask(x):
-        """ X >= 0 & Y >= 0 & (W > 0 | H > 0) """
-        # [batch_size, sql_len, 4] -> [batch_size, 1, sql_len]
-        return ((x[:, :, 0] >= 0) & (x[:, :, 1] >= 0) & (
-                (x[:, :, 2] > 0) | (x[:, :, 3] > 0))).unsqueeze(-2)
-
     def forward(self, x):
         m = self.enc_mask(x)
         x = self.pre_pipe(x)
         for layer in self.layers:
             x = layer(x, m)
         return x, m  # [bs, seq, dim]
+
+    @staticmethod
+    def enc_mask(x):
+        """ X >= 0 & Y >= 0 & (W > 0 | H > 0) """
+        # [batch_size, sql_len, 4] -> [batch_size, 1, sql_len]
+        return ((x[:, :, 0] >= 0) & (x[:, :, 1] >= 0) & (
+                (x[:, :, 2] > 0) | (x[:, :, 3] > 0))).unsqueeze(-2)
 
 
 if __name__ == '__main__':
