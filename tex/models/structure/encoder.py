@@ -298,7 +298,7 @@ class TransformerEncoder(nn.Module):
         """ X >= 0 & Y >= 0 & (W > 0 | H > 0) """
         # [batch_size, sql_len, 4] -> [batch_size, 1, sql_len]
         return ((x[:, :, 0] >= 0) & (x[:, :, 1] >= 0) & (
-                (x[:, :, 2] > 0) | (x[:, :, 3] > 0))).unsqueeze(-2).to(x.device)
+                (x[:, :, 2] > 0) | (x[:, :, 3] > 0))).unsqueeze(-2)
 
     def forward(self, x):
         m = self.enc_mask(x)
