@@ -281,7 +281,7 @@ class TransformerEncoder(nn.Module):
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(TransformerEncoder, self).__init__()
-        self.pre_pipe = nn.Sequential(
+        self.pre_feed = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(d_model, d_model, bias=False),
@@ -295,7 +295,7 @@ class TransformerEncoder(nn.Module):
 
     def forward(self, x):
         m = self.enc_mask(x)
-        x = self.pre_pipe(x)
+        x = self.pre_feed(x)
         for layer in self.layers:
             x = layer(x, m)
         return x, m  # [bs, seq, dim]
