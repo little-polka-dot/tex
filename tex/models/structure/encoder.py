@@ -298,7 +298,8 @@ class TransformerEncoder(nn.Module):
         x = self.pre_feed(x)
         for layer in self.layers:
             x = layer(x, m)
-        return x, m  # [bs, seq, dim]
+        # [batch_size, seq_len, dim]
+        return x, m
 
     @staticmethod
     def enc_mask(x):
