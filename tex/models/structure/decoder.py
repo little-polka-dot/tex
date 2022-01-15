@@ -38,27 +38,22 @@ class Decoder(nn.Module):
             )
         )
         for layer in self.h_decoders:
-            out_x = layer(
-                out_x, enc_value, slf_mask=slf_m, enc_mask=mask)
+            out_x = layer(out_x, enc_value, slf_mask=slf_m, enc_mask=mask)
         cls_x, box_x = out_x, out_x
         for layer in self.c_decoders:
-            cls_x = layer(
-                cls_x, enc_value, slf_mask=slf_m, enc_mask=mask)
+            cls_x = layer(cls_x, enc_value, slf_mask=slf_m, enc_mask=mask)
         cls_x = self.cls_fc(cls_x)
         for layer in self.b_decoders:
-            box_x = layer(
-                box_x, enc_value, slf_mask=slf_m, enc_mask=mask)
+            box_x = layer(box_x, enc_value, slf_mask=slf_m, enc_mask=mask)
         box_x = self.box_fc(box_x)
         return cls_x, torch.sigmoid(box_x)
 
     def greedy_decode(self, dec_input, enc_value, mask=None):
         cls_x, box_x = None, None
         for _ in range(self.seq_len):
-            cls_x, box_x = self.decode(
-                dec_input, enc_value, mask=mask)
+            cls_x, box_x = self.decode(dec_input, enc_value, mask=mask)
             next_word = torch.argmax(cls_x, dim=-1)[:, -1]
-            dec_input = torch.cat([
-                dec_input, next_word.unsqueeze(-1)], dim=-1)
+            dec_input = torch.cat([dec_input, next_word.unsqueeze(-1)], dim=-1)
         # cls_x: [batch_size, seq_len, n_vocab]
         # box_x: [batch_size, seq_len, 4]
         return cls_x, box_x
@@ -67,11 +62,9 @@ class Decoder(nn.Module):
         # dec_input: [batch_size, dec_len]
         # enc_value: [batch_size, enc_len, d_model]
         if self.training:
-            return self.decode(
-                dec_input, enc_value, mask=mask)
+            return self.decode(dec_input, enc_value, mask=mask)
         else:
-            return self.greedy_decode(
-                dec_input, enc_value, mask=mask)
+            return self.greedy_decode(dec_input, enc_value, mask=mask)
 
 
 # if __name__ == '__main__':
