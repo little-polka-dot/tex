@@ -156,7 +156,7 @@ def pad_mask(x, pad_idx=0):
 
 def subsequent_mask(x):
     """ 对角掩码矩阵 """
-    # [batch_size, sql_len] -> [batch_size, sql_len, sql_len]
+    # [batch_size, sql_len] -> [1, sql_len, sql_len]
     return (torch.tril(torch.ones((1, x.size(1), x.size(1)), device=x.device))).bool()
 
 
