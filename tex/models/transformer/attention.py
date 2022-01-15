@@ -151,7 +151,7 @@ class PositionalEncoding(nn.Module):
 
 def pad_mask(x, pad_idx=0):
     # [batch_size, sql_len] -> [batch_size, 1, sql_len]
-    return (x != pad_idx).unsqueeze(-2).to(x.device)
+    return (x != pad_idx).unsqueeze(-2)
 
 
 def subsequent_mask(x):
