@@ -35,7 +35,7 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.attention = ScaledDotProductAttention(dropout)
 
-    def forward(self, query, key, value, mask=None):
+    def forward(self, query, key, value, mask=None, return_attn=False):
         # Q,K,V: [batch_size, len_q/k/v, d_model] mask: [batch_size, len_q, len_k]
         query = self.w_qs(query).view(
             -1, query.size(1), self.n_head, self.d_k).transpose(1, 2)
@@ -48,7 +48,8 @@ class MultiHeadAttention(nn.Module):
         x, attn = self.attention(query, key, value, mask=mask)  # [batch_size, n_head, len_v, d_v]
         x = x.transpose(1, 2)  # [batch_size, len_v, n_head, d_v]
         x = x.contiguous().view(x.size(0), x.size(1), -1)  # [batch_size, len_v, n_head*d_v]
-        return self.dropout(self.fc(x)), attn  # [batch_size, len_v, d_model]
+        x = self.dropout(self.fc(x))
+        return (x, attn) if return_attn else x  # [batch_size, len_v, d_model]
 
 
 class FeedForward(nn.Module):
@@ -87,7 +88,7 @@ class EncodeLayer(nn.Module):
 
     def forward(self, enc_input, mask=None):
         return self.res_ffn(self.res_slf(
-            enc_input, lambda x: self.slf_atn(x, x, x, mask)[0]), self.fin_ffn)
+            enc_input, lambda x: self.slf_atn(x, x, x, mask)), self.fin_ffn)
 
 
 class DecodeLayer(nn.Module):
@@ -106,9 +107,9 @@ class DecodeLayer(nn.Module):
 
     def forward(self, dec_i, enc_o, slf_mask=None, enc_mask=None):
         dec_o = self.res_slf(
-            dec_i, lambda dec_x: self.slf_atn(dec_x, dec_x, dec_x, mask=slf_mask)[0])
+            dec_i, lambda dec_x: self.slf_atn(dec_x, dec_x, dec_x, mask=slf_mask))
         dec_o = self.res_enc(
-            dec_o, lambda dec_x: self.enc_atn(dec_x, enc_o, enc_o, mask=enc_mask)[0])
+            dec_o, lambda dec_x: self.enc_atn(dec_x, enc_o, enc_o, mask=enc_mask))
         return self.res_ffn(dec_o, self.fin_ffn)
 
 
