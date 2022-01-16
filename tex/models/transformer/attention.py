@@ -71,8 +71,8 @@ class AddAndNorm(nn.Module):
         super(AddAndNorm, self).__init__()
         self.norm = nn.LayerNorm(d_model)
 
-    def forward(self, x, sub_layer):
-        return self.norm(x + sub_layer(x))
+    def forward(self, x, sub):
+        return self.norm(x + sub(x))
 
 
 class EncodeLayer(nn.Module):
