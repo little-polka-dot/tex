@@ -48,8 +48,8 @@ class MultiHeadAttention(nn.Module):
         x, attn = self.attention(query, key, value, mask=mask)  # [batch_size, n_head, len_v, d_v]
         x = x.transpose(1, 2)  # [batch_size, len_v, n_head, d_v]
         x = x.contiguous().view(x.size(0), x.size(1), -1)  # [batch_size, len_v, n_head*d_v]
-        x = self.dropout(self.fc(x))
-        return (x, attn) if return_attn else x  # [batch_size, len_v, d_model]
+        x = self.dropout(self.fc(x))  # [batch_size, len_v, d_model]
+        return (x, attn) if return_attn else x
 
 
 class FeedForward(nn.Module):
