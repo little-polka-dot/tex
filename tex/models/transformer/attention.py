@@ -86,9 +86,9 @@ class EncodeLayer(nn.Module):
         self.res_slf = AddAndNorm(d_model)
         self.res_ffn = AddAndNorm(d_model)
 
-    def forward(self, enc_input, mask=None):
+    def forward(self, enc_input, enc_mask=None):
         enc_o = self.res_slf(
-            enc_input, lambda x: self.slf_atn(x, x, x, mask))
+            enc_input, lambda x: self.slf_atn(x, x, x, enc_mask))
         return self.res_ffn(enc_o, self.fin_ffn)
 
 
