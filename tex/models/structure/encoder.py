@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from typing import Type, Union
 from tex.utils.functional import gt, mul, is_odd, map_, list_
 from tex.models.transformer import attention
@@ -13,7 +14,6 @@ class Block(nn.Module):
         super(Block, self).__init__()
         self.sub_method = sub
         self.downsample = None
-        self.relu = nn.ReLU(inplace=True)
         if gt(stride, 1) or in_planes != planes * self.expansion:
             self.downsample = nn.Sequential(
                 nn.Conv2d(
@@ -28,7 +28,7 @@ class Block(nn.Module):
         x = self.net(x)
         if callable(self.sub_method):
             x = self.sub_method(x)
-        return self.relu(s + x)
+        return F.relu(s + x)
         
 
 class BasicBlock(Block):
