@@ -12,7 +12,7 @@ class Block(nn.Module):
 
     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
         super(Block, self).__init__()
-        self.sub_method = sub
+        self.subnetwork = sub
         self.downsample = None
         if gt(stride, 1) or in_planes != planes * self.expansion:
             self.downsample = nn.Sequential(
@@ -26,8 +26,8 @@ class Block(nn.Module):
         if callable(self.downsample):
             r = self.downsample(r)
         x = self.net(x)
-        if callable(self.sub_method):
-            x = self.sub_method(x)
+        if callable(self.subnetwork):
+            x = self.subnetwork(x)
         return F.relu(r + x)
         
 
