@@ -4,7 +4,7 @@ import cv2
 import json
 
 
-class SimpleStructureDataset(Dataset):
+class BackboneStructureDataset(Dataset):
 
     imread_scale = cv2.IMREAD_GRAYSCALE
 
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         ],
         'threshold': None,
     }
-    sd = SimpleStructureDataset(p, transform=config)
+    sd = BackboneStructureDataset(p, transform=config)
 
     # st = StructLang(2, 6)
     # st.merge_cell((0, 1), (0, 2))

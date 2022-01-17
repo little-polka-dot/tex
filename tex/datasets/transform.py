@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 
 
-class StructureTransformer(object):
+class BackboneStructureTransformer(object):
 
     threshold_type = cv2.THRESH_TOZERO  # 超出阈值的保持不变 低于阈值的取0
 
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         'position': [[0, 0, 0, 0], [12, 12, 500, 32]],
     }
 
-    (xd, si), (sl, sp) = StructureTransformer(**{
+    (xd, si), (sl, sp) = BackboneStructureTransformer(**{
         'seq_len': 256,
         'image_size': 800,
         'normalize_position': True,
