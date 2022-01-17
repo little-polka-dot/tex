@@ -281,7 +281,7 @@ class BackboneEncoder(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    """ 输入从PDF解析出来的坐标数据 (X,Y,W,H) d_input=4"""
+    """ 输入从PDF解析出来的坐标数据 (X,Y,W,H) d_input=4 """
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(TransformerEncoder, self).__init__()
