@@ -184,7 +184,6 @@ class BackbonePreprocess(nn.Module):
 
 
 class BackboneEncoder(nn.Module):
-    # TODO 该网络不具有尺度不变性
 
     def __init__(self, d_input, d_model,
                  block: Union[Block, str], layers, d_layer=(64, 128, 256, 512)):
