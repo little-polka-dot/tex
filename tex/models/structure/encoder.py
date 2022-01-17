@@ -29,20 +29,6 @@ class Block(nn.Module):
         if callable(self.sub_method):
             x = self.sub_method(x)
         return self.relu(s + x)
-
-
-# class BasicBlock(Block):
-
-#     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
-#         super(BasicBlock, self).__init__(in_planes, planes, stride, sub)
-#         self.net = nn.Sequential(
-#             nn.BatchNorm2d(in_planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(in_planes, planes, (3, 3), padding=(1, 1), stride=stride),
-#             nn.BatchNorm2d(planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(planes, planes * self.expansion, (3, 3), padding=(1, 1)),
-#         )
         
 
 class BasicBlock(Block):
@@ -57,25 +43,7 @@ class BasicBlock(Block):
             nn.BatchNorm2d(in_planes),
         )
 
-
-# class BottleNeck(Block):
-
-#     expansion = 4
-
-#     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
-#         super(BottleNeck, self).__init__(in_planes, planes, stride, sub)
-#         self.net = nn.Sequential(
-#             nn.BatchNorm2d(in_planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(in_planes, planes, (1, 1)),
-#             nn.BatchNorm2d(planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(planes, planes, (3, 3), padding=(1, 1), stride=stride),
-#             nn.BatchNorm2d(planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(planes, planes * self.expansion, (1, 1)),
-#         )
-
+        
 class BottleNeck(Block):
 
     expansion = 4
@@ -130,24 +98,6 @@ class CoTAttention(nn.Module):
         k_2 = torch.softmax(atn, dim=-1) * val  # bs,c,h*w
         return k_1 + k_2.view(*x.size())  # bs,c,h,w
 
-
-# class CoTBottleNeck(Block):
-
-#     expansion = 4
-
-#     def __init__(self, in_planes, planes, stride=(1, 1), sub=None):
-#         super(CoTBottleNeck, self).__init__(in_planes, planes, stride, sub)
-#         self.net = nn.Sequential(
-#             nn.BatchNorm2d(in_planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(in_planes, planes, (1, 1)),
-#             nn.BatchNorm2d(planes),
-#             nn.ReLU(inplace=True),
-#             CoTAttention(planes, planes, (3, 3), stride=stride),
-#             nn.BatchNorm2d(planes),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(planes, planes * self.expansion, (1, 1)),
-#         )
 
 class CoTBottleNeck(Block):
 
