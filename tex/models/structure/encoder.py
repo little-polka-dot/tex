@@ -22,13 +22,13 @@ class Block(nn.Module):
             )
 
     def forward(self, x):
-        s = x  # id(s) == id(x)
+        r = x  # id(s) == id(x)
         if callable(self.downsample):
-            s = self.downsample(s)
+            r = self.downsample(r)
         x = self.net(x)
         if callable(self.sub_method):
             x = self.sub_method(x)
-        return F.relu(s + x)
+        return F.relu(r + x)
         
 
 class BasicBlock(Block):
