@@ -39,10 +39,8 @@ class BackboneStructureTransformer(object):
     def __call__(self, x_data, y_data):
         # TODO 图片的随机resize
         description = StructLang.from_object(y_data['description'])
-        cut_len = random.randint(1, description.size + 1)  # 随机截断表格描述语句(用于模型训练)
-        # TODO 无须随机截断 对于transformer来说没有意义
-        seq_labels = np.array(description.labels(self._seq_len, False, True, cut_len))
-        seq_inputs = np.array(description.labels(self._seq_len, True, False, cut_len))
+        seq_labels = np.array(description.labels(self._seq_len, False, True))
+        seq_inputs = np.array(description.labels(self._seq_len,  True, True))
 
         if self._normalize_position:  # 坐标归一化
             seq_position = np.array([
@@ -55,6 +53,8 @@ class BackboneStructureTransformer(object):
             ])
         else:
             seq_position = np.array(y_data['position'])
+        seq_position = np.vstack(  # 沿着seq_len方向拼接到指定长度
+            (seq_position, np.zeros((self._seq_len - seq_position.shape[0], 4))))
 
         if self._gaussian_noise:  # 高斯噪音
             x_data = self.gaussian_noise(

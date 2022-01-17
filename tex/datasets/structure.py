@@ -2,9 +2,10 @@ from torch.utils.data import Dataset
 import os
 import cv2
 import json
+import sqlalchemy
 
 
-class BackboneStructureDataset(Dataset):
+class SimpleImageDataset(Dataset):
 
     imread_scale = cv2.IMREAD_GRAYSCALE
 
@@ -64,51 +65,72 @@ class BackboneStructureDataset(Dataset):
         self.index.append(index_name)
 
 
+class SimpleDataset(Dataset):
+
+    def __init__(self, path='dataset.db', transform=None):
+        self.transform = transform
+        self.db = sqlite3.connect(path)
+
+    def __len__(self):
+        pass
+
+    def __getitem__(self, index):
+        pass
+
+    def add(self, x_data, y_data):
+        schema = 'CREATE TABLE IF NOT EXISTS DATA (' \
+                 'INDEX INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT' \
+                 'X VARCHAR(128) NOT NULL' \
+                 'Y VARCHAR(128) NOT NULL' \
+                 ');'
+        cursor = self.db.cursor()
+        cursor.execute(schema)
+        cursor.execute()
+
+
 if __name__ == '__main__':
-    p = 'E:/Code/Mine/github/tex/test/.data/structure/train'
-    config = {
-        'seq_len': 256,
-        'image_size': 227,
-        'normalize_position': True,
-        'gaussian_noise': False,
-        'flim_mode': False,
-        'gaussian_blur': [
-            {
-                'kernel': 3,
-                'sigma': 0,
-            },
-        ],
-        'threshold': None,
-    }
-    sd = BackboneStructureDataset(p, transform=config)
-
-    # st = StructLang(2, 6)
-    # st.merge_cell((0, 1), (0, 2))
-    # st.merge_cell((0, 3), (1, 3))
-    # st.merge_cell((0, 4), (1, 5))
-    # st.merge_cell((1, 0), (1, 1))
+    pass
+    # p = 'E:/Code/Mine/github/tex/test/.data/structure/train'
+    # from tex.datasets.transform import BackboneStructureTransformer
+    # config = BackboneStructureTransformer(**{
+    #     'seq_len': 256,
+    #     'image_size': 227,
+    #     'normalize_position': True,
+    #     'gaussian_noise': False,
+    #     'flim_mode': False,
+    #     'gaussian_blur': None,
+    #     'threshold': None,
+    # })
+    # sd = SimpleImageDataset(p, transform=config)
     #
-    # yd = {
-    #     'description': st.to_object(),
-    #     'position': [[0, 0, 0, 0], [100, 100, 100, 100]]
-    # }
+    # # st = StructLang(2, 6)
+    # # st.merge_cell((0, 1), (0, 2))
+    # # st.merge_cell((0, 3), (1, 3))
+    # # st.merge_cell((0, 4), (1, 5))
+    # # st.merge_cell((1, 0), (1, 1))
+    # #
+    # # yd = {
+    # #     'description': st.to_object(),
+    # #     'position': [[0, 0, 0, 0], [100, 100, 100, 100]]
+    # # }
+    # #
+    # # im = cv2.imread('F:/img.png')
+    # #
+    # # sd.add('1', im, yd)
+    # # sd.add('2', im, yd)
+    # # sd.add('3', im, yd)
+    # # sd.add('4', im, yd)
+    # # sd.add('5', im, yd)
     #
-    # im = cv2.imread('F:/img.png')
+    # import torch
     #
-    # sd.add('1', im, yd)
-    # sd.add('2', im, yd)
-    # sd.add('3', im, yd)
-    # sd.add('4', im, yd)
-    # sd.add('5', im, yd)
-
-    import torch
-
-    dl = torch.utils.data.DataLoader(sd, batch_size=3)
-
-    for _ in range(10):
-        for x, y in dl:
-            print(x[0].size())
-            print(x[1].size())
-            print(y[0].size())
-            print(y[1].size())
+    # dl = torch.utils.data.DataLoader(sd, batch_size=3)
+    #
+    # for _ in range(10):
+    #     for x, y in dl:
+    #         print(x[0].size())
+    #         print(x[1].size())
+    #         print(y[0].size())
+    #         print(y[1].size())
+    #         print('*******************')
 

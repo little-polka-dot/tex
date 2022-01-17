@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from typing import Type, Union
-from tex.utils.functional import optional_function
 from tex.utils.functional import gt, mul, is_odd, map_, list_
 from tex.models.transformer import attention
 
@@ -21,9 +20,14 @@ class Block(nn.Module):
                 nn.BatchNorm2d(planes * self.expansion),
             )
 
-    def forward(self, x):  # pre-activation
-        return optional_function(self.sub_method, lambda i: i)(
-            self.net(x)) + optional_function(self.downsample, lambda i: i)(x)
+    def forward(self, x):
+        s = x  # id(s) == id(x)
+        if callable(self.downsample):
+            s = self.downsample(s)
+        x = self.net(x)
+        if callable(self.sub_method):
+            x = self.sub_method(x)
+        return x + s  # pre-activation
 
 
 class BasicBlock(Block):
@@ -106,7 +110,7 @@ class CoTAttention(nn.Module):
             self.pool = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
-        x = optional_function(self.pool, lambda i: i)(x)  # bs,c,h,w
+        if callable(self.pool): x = self.pool(x)  # bs,c,h,w
         k_1 = self.key_mapping(x)  # bs,c,h,w
         val = self.val_mapping(x).view(x.size(0), x.size(1), -1)  # bs,c,h*w
         atn = self.atn_mapping(torch.cat([k_1, x], dim=1))  # bs,c*alpha,h,w

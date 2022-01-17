@@ -2,23 +2,6 @@ from functools import reduce
 from typing import Iterable
 
 
-def optional_function(func, default=None):
-    """
-    >> func: Callable
-    >> func_default: Callable
-    >> optional_function(func, func_default) == func
-    True
-    >> func = None
-    >> optional_function(func, func_default) == func_default
-    True
-    """
-    if default is None:
-        default = lambda *w, **kw: None
-    else:
-        assert callable(default)
-    return func if callable(func) else default
-
-
 def and_(*__iter):
     return reduce(lambda a, b: a and b, __iter[0], True) \
         if len(__iter) == 1 and isinstance(__iter[0], Iterable) \
