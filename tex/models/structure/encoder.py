@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from typing import Type, Union
 from tex.utils.functional import gt, mul, is_odd, map_, list_
 from tex.models.transformer import attention
@@ -28,7 +27,7 @@ class Block(nn.Module):
         x = self.net(x)
         if callable(self.subnetwork):
             x = self.subnetwork(x)
-        return F.relu(r + x)
+        return torch.relu(r + x)
         
 
 class BasicBlock(Block):
