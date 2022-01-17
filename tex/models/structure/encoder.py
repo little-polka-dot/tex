@@ -208,6 +208,7 @@ class BackbonePreprocess(nn.Module):
 
 
 class BackboneEncoder(nn.Module):
+    # TODO 该网络不具有尺度不变性
 
     def __init__(self, d_input, d_model,
                  block: Union[Block, str], layers, d_layer=(64, 128, 256, 512)):
@@ -285,6 +286,7 @@ class TransformerEncoder(nn.Module):
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(TransformerEncoder, self).__init__()
+        # TODO: 不具有平移等变性 数据增强时需要引入平移与尺度缩放的随机变化(无需考虑旋转与光照不变性)
         self.pre_feed = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),

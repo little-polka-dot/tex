@@ -55,7 +55,7 @@ def test():
                 'class': 'tex.datasets.structure.SimpleStructureDataset',
                 'path': 'E:/Code/Mine/github/tex/test/.data/structure/train',
                 'transform': {
-                    'class': 'tex.datasets.transform.StructureTransformer',
+                    'class': 'tex.datasets.transform.StructureTransform',
                     'seq_len': 256,
                     'image_size': 224,
                     'normalize_position': True,
@@ -103,7 +103,7 @@ if __name__ == '__main__':
     # o = net(i, sos(3, 8))
     # print(o[0].size())
     # print(o[1].size())
-    net = builder.build_from_settings({'class':'tex.models.structure.TransformerStructure',**dict(
+    net = builder.build_from_settings({'class':'tex.models.structure.PositionalStructure',**dict(
         d_input=4,
         d_model=128,
         enc_layers=4,

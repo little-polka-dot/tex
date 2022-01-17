@@ -41,13 +41,13 @@ class BackboneStructure(nn.Module):
         return self.dec_net(dec_input, self.enc_net(enc_input))
 
 
-class TransformerStructure(nn.Module):
+class PositionalStructure(nn.Module):
 
     def __init__(self, d_input, d_model, enc_layers, n_vocab, dec_len,
                  n_head, d_k, d_ffn, dec_n_pos,
                  dec_layers, dec_tail_layers=1, pad_idx=0, dropout=0.1):
 
-        super(TransformerStructure, self).__init__()
+        super(PositionalStructure, self).__init__()
 
         from tex.models.structure.encoder import TransformerEncoder as Encoder
         from tex.models.structure.decoder import Decoder
