@@ -4,6 +4,9 @@ import torch.optim as optim
 import tex.models.structure.losses as losses
 from torch.utils.data import DataLoader
 import tex.utils.builder as builder
+from torch.utils.data import Dataset
+import random
+import numpy as np
 
 
 def train_structure(model: nn.Module, dataloader: DataLoader,
@@ -15,6 +18,7 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
         else:
             model = model.to(device_ids)
     optimizer = optim.Adam(model.parameters(), lr=lr)
+    model = model.double()
     for epoch in range(epochs):
         model.train()
         for input_, target in dataloader:
@@ -22,105 +26,88 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
             output = model(*input_)
             cls_loss, iou_loss = \
                 losses.structure_loss(output, target)
+            print(cls_loss, iou_loss)
+            p = [i for i in model.enc_net.pos_feed.parameters()]
             (cls_loss + iou_loss).backward()
             optimizer.step()
+            p = [i for i in model.enc_net.pos_feed.parameters()]
         # model.eval()
         # with torch.no_grad():
         #     pass
+    torch.save(model, './test.pt')
+
+
+class RandomDataset(Dataset):
+
+    def __init__(self, transform=None):
+        self.transform = transform
+        # x_data [bs, enc_len, 4] y_data description:[bs, dec_len] position:[bs, dec_len, 4]
+
+    def __len__(self):
+        return 5
+
+    def __getitem__(self, index):
+        x_data = np.array([
+            [0, 0, 1, 1],
+            [1, 0, 1, 1],
+            [0, 1, 1, 1],
+            [1, 1, 1, 1]
+        ])
+        y_data = {
+            'description': {
+                'rows': 2,
+                'cols': 2,
+                'data': [['CELL'] * 2] * 2
+            },
+            'position': x_data
+        }
+        if callable(self.transform):
+            x_data, y_data = self.transform(x_data, y_data)
+        return x_data, y_data
 
 
 def test():
     settings = {
         'model': {
-            'class': 'tex.models.structure.BackboneStructure',
-            'im_channels': 1,  # encoder输入图层数
-            'd_model': 512,  # 向量维度
-            'enc_layers': [3, 4, 6, 3],
-            'enc_block': 'CoTBottleNeck',
-            'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
-            'n_vocab': 9,  # 表结构描述语言词汇量
-            'seq_len': 256,  # decoder序列长度
+            'class': 'tex.models.structure.PositionalStructure',
+            'd_input': 4,
+            'd_model': 16,
+            'enc_layers': 4,
+            'n_vocab': 9,
+            'dec_len': 11,
             'n_head': 8,
-            'd_k': 128,
-            'dec_layers': 5,
-            'dec_sp_layers': 1,
-            'd_ffn': 1024,
-            'dropout': 0.1,
-            'dec_n_pos': 256,  # 须大于等于seq_len
+            'd_k': 32,
+            'd_ffn': 32,
+            'dec_n_pos': 512,
+            'dec_layers': 3,
+            'dec_tail_layers': 1,
             'pad_idx': 0,
+            'dropout': 0.1
         },
         'dataloader': {
             'class': 'torch.utils.data.DataLoader',
             'dataset': {
-                'class': 'tex.datasets.structure.SimpleStructureDataset',
-                'path': 'E:/Code/Mine/github/tex/test/.data/structure/train',
+                'class': '.RandomDataset',
                 'transform': {
-                    'class': 'tex.datasets.transform.StructureTransform',
-                    'seq_len': 256,
-                    'image_size': 224,
+                    'class': 'tex.datasets.transform.PositionalStructureTransform',
+                    'enc_len': 10,
+                    'dec_len': 10,
                     'normalize_position': True,
-                    'gaussian_noise': False,
-                    'flim_mode': False,
-                    'gaussian_blur': None,
-                    'threshold': None,
+                    'transform_position': False
                 }
             },
-            'batch_size': 5,
-            'shuffle': True,
-            'num_workers': 3,
+            'batch_size': 1,
+            'shuffle': False,
+            'num_workers': 0,
             'drop_last': True,
             'timeout': 0,
         },
         'device_ids': None,
         'lr': 0.0001,
-        'epochs': 10
+        'epochs': 100
     }
-    print(builder.build_from_settings(settings))
+    train_structure(**builder.build_from_settings(settings))
 
 
 if __name__ == '__main__':
-    # net = builder.build_from_settings({
-    #     'class': 'tex.models.structure.BackboneStructure',
-    #     'im_channels': 1,  # encoder输入图层数
-    #     'd_model': 512,  # 向量维度
-    #     'enc_layers': [3, 4, 6, 3],
-    #     'enc_block': 'CoTBottleNeck',
-    #     'enc_n_pos': 4096,  # 须大于等于图像卷积后的size
-    #     'n_vocab': 9,  # 表结构描述语言词汇量
-    #     'dec_len': 10,  # decoder序列长度
-    #     'n_head': 8,
-    #     'd_k': 128,
-    #     'dec_layers': 5,
-    #     'dec_tail_layers': 1,
-    #     'd_ffn': 1024,
-    #     'dropout': 0.1,
-    #     'dec_n_pos': 256,  # 须大于等于seq_len
-    #     'pad_idx': 0,
-    # })
-    # from tex.models.transformer.attention import sos
-    # i = torch.randn((3, 1, 224, 224))
-    # net.eval()
-    # o = net(i, sos(3, 8))
-    # print(o[0].size())
-    # print(o[1].size())
-    net = builder.build_from_settings({'class':'tex.models.structure.PositionalStructure',**dict(
-        d_input=4,
-        d_model=128,
-        enc_layers=4,
-        n_vocab=9,
-        dec_len=11,
-        n_head=8,
-        d_k=32,
-        d_ffn=32,
-        dec_n_pos=512,
-        dec_layers=3,
-        dec_tail_layers=1,
-        pad_idx=0,
-        dropout=0.1
-    )})
-    from tex.models.transformer.attention import sos
-    i = torch.randn((3, 11, 4))
-    net.eval()
-    o = net(i, sos(3, 8))
-    print(o[0].size())
-    print(o[1].size())
+    test()

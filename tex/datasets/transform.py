@@ -80,7 +80,7 @@ class BackboneStructureTransform(object):
 
         x_data = self.square_padding(x_data / 255, padding=0)  # 正方形填充 / 归一化
 
-        return (x_data, seq_inputs), (seq_positions, seq_labels)
+        return (x_data, seq_inputs), (seq_labels, seq_positions)
 
 
 class PositionalStructureTransform(object):
@@ -94,7 +94,7 @@ class PositionalStructureTransform(object):
     def __call__(self, x_data, y_data):
         # x_data [enc_len, 4] y_data description:[dec_len] position:[dec_len, 4]
 
-        # y_data['position']一定在x_data集合最小外接矩形的范围内
+        # TODO: 测试 暂时取消 y_data['position']一定在x_data集合最小外接矩形的范围内
         assert (x_data[:, 0] + x_data[:, 2]).max() >= (
                 y_data['position'][:, 0] + y_data['position'][:, 2]).max()
         assert (x_data[:, 1] + x_data[:, 3]).max() >= (
@@ -160,7 +160,7 @@ class PositionalStructureTransform(object):
         seq_positions = np.vstack((seq_positions, np.zeros(
             (self._dec_len - seq_positions.shape[0], seq_positions.shape[1]))))
 
-        return (x_data, seq_inputs), (seq_positions, seq_labels)
+        return (x_data, seq_inputs), (seq_labels, seq_positions)
 
 
 if __name__ == '__main__':

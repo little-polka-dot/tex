@@ -65,27 +65,16 @@ class SimpleImageDataset(Dataset):
         self.index.append(index_name)
 
 
-class SimpleDataset(Dataset):
+class RandomDataset(Dataset):
 
     def __init__(self, path='dataset.db', transform=None):
         self.transform = transform
-        self.db = sqlite3.connect(path)
 
     def __len__(self):
         pass
 
     def __getitem__(self, index):
         pass
-
-    def add(self, x_data, y_data):
-        schema = 'CREATE TABLE IF NOT EXISTS DATA (' \
-                 'INDEX INTEGER PRIMARY KEY NOT NULL AUTOINCREMENT' \
-                 'X VARCHAR(128) NOT NULL' \
-                 'Y VARCHAR(128) NOT NULL' \
-                 ');'
-        cursor = self.db.cursor()
-        cursor.execute(schema)
-        cursor.execute()
 
 
 if __name__ == '__main__':

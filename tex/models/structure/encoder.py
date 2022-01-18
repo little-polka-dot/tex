@@ -262,7 +262,6 @@ class PositionalEncoder(nn.Module):
         super(PositionalEncoder, self).__init__()
         # TODO: 不具有平移等变性 数据增强时需要引入平移与尺度缩放的随机变化(无需考虑旋转与光照不变性)
         # TODO: 将集合中每个元素坐标之间的差值作为模型的输入
-        # TODO: (Xn, Yn, Wn, Hn) -> (Wn, Hn, Xn-X1, Yn-Y1, Xn-X2, Yn-Y2, ..., Xn-Xn, Yn-Yn)
         self.pos_feed = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),
