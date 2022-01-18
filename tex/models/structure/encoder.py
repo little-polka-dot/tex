@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Type, Union
-from tex.utils.functional import gt, mul, is_odd, map_, list_
+from tex.utils.functional import any_gt, mul, all_odd, map_, list_
 from tex.models.transformer import attention
 
 
@@ -13,7 +13,7 @@ class Block(nn.Module):
         super(Block, self).__init__()
         self.subnetwork = sub
         self.downsample = None
-        if gt(stride, 1) or in_planes != planes * self.expansion:
+        if any_gt(stride, 1) or in_planes != planes * self.expansion:
             self.downsample = nn.Sequential(
                 nn.Conv2d(
                     in_planes, planes * self.expansion, (1, 1), stride=stride, bias=False),
@@ -65,7 +65,7 @@ class CoTAttention(nn.Module):
 
     def __init__(self, d_model, d_hidden, kernel_size, stride=(1, 1)):
         super(CoTAttention, self).__init__()
-        assert is_odd(kernel_size)  # 卷积尺度必须为奇数
+        assert all_odd(kernel_size)  # 卷积尺度必须为奇数
         padding = list_(map_(lambda x: (x - 1) // 2, kernel_size))
         self.kernel_size = kernel_size
         self.key_mapping = nn.Sequential(  # TODO: conv groups=4 ?
@@ -84,7 +84,7 @@ class CoTAttention(nn.Module):
             nn.Conv2d(d_hidden, d_model * mul(kernel_size), (1, 1))
         )
         self.pool = None
-        if gt(stride, 1):
+        if any_gt(stride, 1):
             self.pool = nn.AvgPool2d(kernel_size, stride=stride, padding=padding)
 
     def forward(self, x):
@@ -256,13 +256,14 @@ class BackboneEncoder(nn.Module):
         return output.transpose(1, 2)
 
 
-class TransformerEncoder(nn.Module):
-    """ 输入从PDF解析出来的坐标数据 (X,Y,W,H) d_input=4 """
+class PositionalEncoder(nn.Module):
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
-        super(TransformerEncoder, self).__init__()
+        super(PositionalEncoder, self).__init__()
         # TODO: 不具有平移等变性 数据增强时需要引入平移与尺度缩放的随机变化(无需考虑旋转与光照不变性)
-        self.pre_feed = nn.Sequential(
+        # TODO: 将集合中每个元素坐标之间的差值作为模型的输入
+        # TODO: (Xn, Yn, Wn, Hn) -> (Wn, Hn, Xn-X1, Yn-Y1, Xn-X2, Yn-Y2, ..., Xn-Xn, Yn-Yn)
+        self.pos_feed = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(d_model, d_model, bias=False),
@@ -276,45 +277,42 @@ class TransformerEncoder(nn.Module):
 
     def forward(self, x):
         m = self.enc_mask(x)
-        x = self.pre_feed(x)
+        x = self.pos_feed(x)
         for layer in self.layers:
             x = layer(x, m)
-        # [batch_size, seq_len, dim]
-        return x, m
+        return x, m  # [bs, l, d]
 
     @staticmethod
     def enc_mask(x):
-        """ X >= 0 & Y >= 0 & (W > 0 | H > 0) """
-        # [batch_size, sql_len, 4] -> [batch_size, 1, sql_len]
-        return ((x[:, :, 0] >= 0) & (x[:, :, 1] >= 0) & (
-                (x[:, :, 2] > 0) | (x[:, :, 3] > 0))).unsqueeze(-2)
+        # [batch_size, sql_len, d_input] -> [batch_size, 1, sql_len]
+        return ((x > 0) | (x < 0)).any(-1).unsqueeze(-2)
 
 
 if __name__ == '__main__':
-    # net = BackboneEncoder(1, 256, 'BasicBlock', [3, 4, 6, 3])
-    # i = torch.randn((10, 1, 224, 224))
-    # print(net(i).size())
-    # net = TransformerEncoder(4, 128, 8, 32, 4)
-    # t = torch.randn((11, 40, 4))
-    # print(net(t).size())
-    # t = torch.cat((torch.abs(torch.randn((2, 5, 4))), torch.zeros((2, 3, 4))), dim=1)
-    # print(t)
-    # print((t[:, :, 2] * t[:, :, 3] <= 0).size())
-    i = torch.tensor([[[ 0.3677,  1.9821, -1.7504, -0.3344],
-         [-0.0947, -0.0717, -0.4757,  0.6903],
-         [ 0.1778,  0.9535,  0,  0],
-         [-1.1163, -0.3333,  0.2172,  2.0513],
-         [-1.2663, -1.9714, -1.3209,  0.0366]],
-
-        [[ 1.5173,  2.1045, 0,  0],
-         [-1.0373, -0.5103,  0.3331,  0.8718],
-         [ 0.5383,  0.9850, -0.9056, -1.2403],
-         [ 0.1221,  1.2144,  0.5437,  0.7019],
-         [-0.4992,  0.8216,  2.0324,  1.2080]],
-
-        [[-1.7148, -1.1314, -0.7211,  1.4601],
-         [-1.4436, -0.9689, -1.0274,  1.3438],
-         [-0.7712, -0.0175, -2.8958,  1.0208],
-         [-0.7913, -1.2262,  2.4288, -0.8707],
-         [-0.5462, 0, 0, 0]]])
-    print(TransformerEncoder.enc_mask(i))
+    # x = torch.randn((3, 5, 4))
+    # print(x)
+    # s = x[:, :, 2:]
+    # o = x[:, :, :2].repeat(1, 1, x.size(1))
+    # w = x[:, :, :2].reshape(x.size(0), -1).unsqueeze(1).expand(-1, x.size(1), -1)
+    # print(o)
+    # print(w)
+    # print(o - w)
+    # x = torch.tensor([[[ 1.1538,  0.6114,  0.3825,  0.0084],
+    #      [-0.6018, -0.5000,  1.6582,  1.3905],
+    #      [-1.5990, -1.4760, -0.8017,  0.9766],
+    #      [-0.4711,  0.5145, -0.9359,  2.0625],
+    #      [-0.9621, -0.4437, -0.5028,  1.1662]],
+    #
+    #     [[-0.2074,  0.3908, -0.1805, -0.3430],
+    #      [ 1.6591, -0.1458, -1.1184,  1.0134],
+    #      [-1.4994, -0.1893,  0.6098, -0.5611],
+    #      [ 0.6335,  0.9496,  0.5896,  0.0412],
+    #      [ 0.3446,  0.5703,  2.0069, -0.3436]],
+    #
+    #     [[-0.0463, -0.0167,  0.2973, -0.7925],
+    #      [ 1.1506,  1.7648,  0.6622,  2.0807],
+    #      [-0.4990,  2.5495,  1.1142, -0.4095],
+    #      [0, 0, 0, 0],
+    #      [0,  0, 0,  0]]])
+    # print(((x > 0) | (x < 0)).any(-1))
+    pass

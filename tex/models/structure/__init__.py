@@ -49,7 +49,7 @@ class PositionalStructure(nn.Module):
 
         super(PositionalStructure, self).__init__()
 
-        from tex.models.structure.encoder import TransformerEncoder as Encoder
+        from tex.models.structure.encoder import PositionalEncoder as Encoder
         from tex.models.structure.decoder import Decoder
 
         self.enc_net = Encoder(
