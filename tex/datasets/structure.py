@@ -2,7 +2,6 @@ from torch.utils.data import Dataset
 import os
 import cv2
 import json
-import sqlalchemy
 
 
 class SimpleImageDataset(Dataset):
