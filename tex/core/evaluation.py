@@ -5,23 +5,22 @@ def sequence_accuracy(output, target, ignore_idx=0):
     """
     总体评估一个模型 如果需要评估每一个类的识别情况则需要使用f1值来评估
     准确率 预测正确的占总的比重
-    output [batch_size, seq_len, n_classes]
-    target [batch_size, seq_len]
+    output [..., seq_len, n_classes]
+    target [..., seq_len]
     """
-    acc = (torch.argmax(output, dim=-1) == target).to(torch.float)
-    return torch.nanmean(
-        acc.masked_fill(target == ignore_idx, torch.nan))
+    acc = torch.argmax(output, dim=-1) == target
+    acc = torch.where(acc, 1.0, 0.0)
+    return torch.mean(acc[target != ignore_idx])
 
 
 def sequence_precision(output, target, use_idx=0):
     """
     查准率 正确预测为正的占全部预测为正的比例
-    output [batch_size, seq_len, n_classes]
-    target [batch_size, seq_len]
+    output [..., seq_len, n_classes]
+    target [..., seq_len]
     """
-    pre = torch.argmax(output, dim=-1)
-    pre_matrix = pre.masked_fill(
-        pre == use_idx, 1).masked_fill(pre != use_idx, 0)
+    mask = torch.argmax(output, dim=-1) != use_idx
+    pre_matrix = torch.where(mask, 0, 1)
     tar_matrix = pre_matrix.masked_fill(target != use_idx, 0)
     return torch.sum(tar_matrix) / torch.sum(pre_matrix)
 
@@ -29,18 +28,17 @@ def sequence_precision(output, target, use_idx=0):
 def sequence_recall(output, target, use_idx=0):
     """
     查全率 正确预测为正的占全部实际为正的比例
-    output [batch_size, seq_len, n_classes]
-    target [batch_size, seq_len]
+    output [..., seq_len, n_classes]
+    target [..., seq_len]
     """
-    pre = torch.argmax(output, dim=-1)
-    tar_matrix = target.masked_fill(
-        target == use_idx, 1).masked_fill(target != use_idx, 0)
-    pre_matrix = tar_matrix.masked_fill(pre != use_idx, 0)
+    mask = torch.argmax(output, dim=-1) != use_idx
+    tar_matrix = torch.where(target == use_idx, 1, 0)
+    pre_matrix = tar_matrix.masked_fill(mask, 0)
     return torch.sum(pre_matrix) / torch.sum(tar_matrix)
 
 
 def sequence_f1(output, target, use_idx=0):
-    """ F1值(H-mean) """
+    """ F1 | H-mean """
     p = sequence_precision(output, target, use_idx)
     r = sequence_recall(output, target, use_idx)
     return 2 * p * r / (p + r)
@@ -61,6 +59,7 @@ if __name__ == '__main__':
          [-0.0197, -0.5762,  0.1544],
          [-0.1455, -0.2509, -0.5170]]])
     t = torch.tensor([[1,0,0,1,1,2],[2,2,2,2,1,0]])
+    print(sequence_accuracy(x, t, 0))
     print(sequence_recall(x, t, 2))
     print(sequence_precision(x, t, 2))
     print(sequence_f1(x, t, 2))

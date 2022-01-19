@@ -10,6 +10,9 @@
     表格结构抽取（ResNet + Transformer）
     文字识别模块（CRNN + CTC Loss）
 
++ PositionalStructure
+
+
 ### Acknowledgements
 
 ------------------------

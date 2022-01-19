@@ -94,7 +94,7 @@ class PositionalStructureTransform(object):
     def __call__(self, x_data, y_data):
         # x_data [enc_len, 4] y_data description:[dec_len] position:[dec_len, 4]
 
-        # TODO: 测试 暂时取消 y_data['position']一定在x_data集合最小外接矩形的范围内
+        # y_data['position']一定在x_data集合最小外接矩形的范围内
         assert (x_data[:, 0] + x_data[:, 2]).max() >= (
                 y_data['position'][:, 0] + y_data['position'][:, 2]).max()
         assert (x_data[:, 1] + x_data[:, 3]).max() >= (
@@ -110,6 +110,7 @@ class PositionalStructureTransform(object):
         seq_inputs = np.array(description.labels(self._dec_len,  True, True))
 
         if self._normalize_position:  # 坐标归一化
+            # 是否可以认为归一化可以去除掉尺度以及绝对坐标的信息？
             normalize_size = max(boundary_w, boundary_h)
             normalize_fill = abs(boundary_w - boundary_h) / 2
             if boundary_w > boundary_h:
@@ -149,9 +150,9 @@ class PositionalStructureTransform(object):
         else:
             x_data, seq_positions = np.array(x_data), np.array(y_data['position'])
 
-        if self._transform_position:  # TODO: [待测试] x_data高维空间映射
+        if self._transform_position:  # TODO: [测试] x_data高维空间映射
             # (Xn, Yn, Wn, Hn) -> (Wn, Hn, Xn-X1, Yn-Y1, Xn-X2, Yn-Y2, ..., Xn-Xn, Yn-Yn)
-            # TODO: 打乱坐标顺序后模型是否还能正常识别？
+            # TODO: 打乱序列顺序后模型是否还能正常识别？
             l_value = np.tile(x_data[:, :2], (1, x_data.shape[0]))
             r_value = np.tile(x_data[:, :2].flatten(), (x_data.shape[0], 1))
             x_data = np.hstack((x_data[:, 2:], l_value - r_value))

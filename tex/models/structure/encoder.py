@@ -260,8 +260,7 @@ class PositionalEncoder(nn.Module):
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(PositionalEncoder, self).__init__()
-        # TODO: 不具有平移等变性 数据增强时需要引入平移与尺度缩放的随机变化(无需考虑旋转与光照不变性)
-        # TODO: 将集合中每个元素坐标之间的差值作为模型的输入
+        # TODO: 该模型不具有平移不变性与尺度不变性
         self.pos_feed = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),

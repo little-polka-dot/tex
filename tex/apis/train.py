@@ -5,12 +5,12 @@ import tex.models.structure.losses as losses
 from torch.utils.data import DataLoader
 import tex.utils.builder as builder
 from torch.utils.data import Dataset
-import random
 import numpy as np
 
 
 def train_structure(model: nn.Module, dataloader: DataLoader,
                     device_ids=None, lr=0.0001, epochs=10):
+    model = model.to(torch.double)
     if device_ids:
         if isinstance(device_ids, list):
             model = nn.DataParallel(
@@ -18,7 +18,6 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
         else:
             model = model.to(device_ids)
     optimizer = optim.Adam(model.parameters(), lr=lr)
-    model = model.double()
     for epoch in range(epochs):
         model.train()
         for input_, target in dataloader:
@@ -27,10 +26,8 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
             cls_loss, iou_loss = \
                 losses.structure_loss(output, target)
             print(cls_loss, iou_loss)
-            p = [i for i in model.enc_net.pos_feed.parameters()]
             (cls_loss + iou_loss).backward()
             optimizer.step()
-            p = [i for i in model.enc_net.pos_feed.parameters()]
         # model.eval()
         # with torch.no_grad():
         #     pass
@@ -44,20 +41,15 @@ class RandomDataset(Dataset):
         # x_data [bs, enc_len, 4] y_data description:[bs, dec_len] position:[bs, dec_len, 4]
 
     def __len__(self):
-        return 5
+        return 1000
 
     def __getitem__(self, index):
-        x_data = np.array([
-            [0, 0, 1, 1],
-            [1, 0, 1, 1],
-            [0, 1, 1, 1],
-            [1, 1, 1, 1]
-        ])
+        x_data = np.random.random((20, 4)) * 100
         y_data = {
             'description': {
                 'rows': 2,
-                'cols': 2,
-                'data': [['CELL'] * 2] * 2
+                'cols': 10,
+                'data': [['CELL'] * 10] * 2
             },
             'position': x_data
         }
@@ -70,8 +62,8 @@ def test():
     settings = {
         'model': {
             'class': 'tex.models.structure.PositionalStructure',
-            'd_input': 4,
-            'd_model': 16,
+            'd_input': 42,
+            'd_model': 32,
             'enc_layers': 4,
             'n_vocab': 9,
             'dec_len': 11,
@@ -90,13 +82,13 @@ def test():
                 'class': '.RandomDataset',
                 'transform': {
                     'class': 'tex.datasets.transform.PositionalStructureTransform',
-                    'enc_len': 10,
-                    'dec_len': 10,
+                    'enc_len': 50,
+                    'dec_len': 50,
                     'normalize_position': True,
-                    'transform_position': False
+                    'transform_position': True
                 }
             },
-            'batch_size': 1,
+            'batch_size': 10,
             'shuffle': False,
             'num_workers': 0,
             'drop_last': True,
