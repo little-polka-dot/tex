@@ -12,6 +12,8 @@
 
 + PositionalStructure
 
+![PositionalStructure](https://github.com/CatAtHome/tex/blob/main/img/PositionalStructure.png)
+
 
 ### Acknowledgements
 
