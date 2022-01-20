@@ -22,7 +22,7 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
         model.train()
         for (x_data, seq_inputs), (seq_labels, seq_pos) in dataloader:
             optimizer.zero_grad()
-            _, cls_x, box_x = model(x_data, seq_inputs, False)
+            cls_x, box_x = model(x_data, seq_inputs, False)
             cls_loss, iou_loss = \
                 losses.structure_loss((cls_x, box_x), (seq_labels, seq_pos))
             print(cls_loss, iou_loss)
@@ -61,7 +61,7 @@ class RandomDataset(Dataset):
 def test():
     settings = {
         'model': {
-            'class': 'tex.models.structure.PositionalStructure',
+            'class': 'tex.models.structure.PosStructure',
             'd_input': 42,
             'd_model': 32,
             'enc_layers': 4,
@@ -71,7 +71,7 @@ def test():
             'd_k': 32,
             'd_ffn': 32,
             'dec_n_pos': 512,
-            'dec_layers': 3,
+            'dec_layers': 4,
             'pad_idx': 0,
             'dropout': 0.1
         },

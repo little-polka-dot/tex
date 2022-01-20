@@ -278,7 +278,8 @@ class PositionalEncoder(nn.Module):
         x = self.pos_mapping(x)
         for layer in self.encoders:
             x = layer(x, m)
-        return x, m  # [bs, L, d]
+        # [batch_size, len, dim]
+        return x, m  # mask to dec
 
     @staticmethod
     def encode_mask(x):
