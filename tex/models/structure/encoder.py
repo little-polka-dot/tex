@@ -261,27 +261,27 @@ class PositionalEncoder(nn.Module):
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(PositionalEncoder, self).__init__()
         # TODO: 该模型不具有平移不变性与尺度不变性
-        self.pos_feed = nn.Sequential(
+        self.pos_mapping = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.ReLU(inplace=True),
             nn.Linear(d_model, d_model, bias=False),
             nn.Dropout(dropout),
             nn.LayerNorm(d_model),
         )
-        self.layers = nn.ModuleList([
+        self.encoders = nn.ModuleList([
             attention.EncodeLayer(
                 d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
         ])
 
     def forward(self, x):
-        m = self.enc_mask(x)
-        x = self.pos_feed(x)
-        for layer in self.layers:
+        m = self.encode_mask(x)
+        x = self.pos_mapping(x)
+        for layer in self.encoders:
             x = layer(x, m)
-        return x, m  # [bs, l, d]
+        return x, m  # [bs, L, d]
 
     @staticmethod
-    def enc_mask(x):
+    def encode_mask(x):
         # [batch_size, sql_len, d_input] -> [batch_size, 1, sql_len]
         return ((x > 0) | (x < 0)).any(-1).unsqueeze(-2)
 

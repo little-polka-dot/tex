@@ -5,7 +5,7 @@ class BackboneStructure(nn.Module):
 
     def __init__(self, im_channels, d_model, enc_block, enc_layers,
                  n_vocab, dec_len, n_head, d_k, d_ffn, enc_n_pos, dec_n_pos,
-                 dec_layers, dec_tail_layers=1, pad_idx=0, dropout=0.1):
+                 dec_layers, pad_idx=0, dropout=0.1):
 
         super(BackboneStructure, self).__init__()
 
@@ -30,7 +30,6 @@ class BackboneStructure(nn.Module):
             n_head=n_head,
             d_k=d_k,
             layers=dec_layers,
-            tail_layers=dec_tail_layers,
             pad_idx=pad_idx,
             d_ffn=d_ffn,
             dropout=dropout,
@@ -45,7 +44,7 @@ class PositionalStructure(nn.Module):
 
     def __init__(self, d_input, d_model, enc_layers, n_vocab, dec_len,
                  n_head, d_k, d_ffn, dec_n_pos,
-                 dec_layers, dec_tail_layers=1, pad_idx=0, dropout=0.1):
+                 dec_layers, pad_idx=0, dropout=0.1):
 
         super(PositionalStructure, self).__init__()
 
@@ -69,15 +68,14 @@ class PositionalStructure(nn.Module):
             n_head=n_head,
             d_k=d_k,
             layers=dec_layers,
-            tail_layers=dec_tail_layers,
             pad_idx=pad_idx,
             d_ffn=d_ffn,
             dropout=dropout,
             n_position=dec_n_pos
         )
 
-    def forward(self, enc_input, dec_input):
+    def forward(self, enc_input, dec_input, is_greedy=False):
         enc_value, enc_mask = self.enc_net(enc_input)
         return self.dec_net(
-            dec_input, enc_value, enc_mask=enc_mask)
+            dec_input, enc_value, enc_mask, is_greedy)
 

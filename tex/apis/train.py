@@ -20,11 +20,11 @@ def train_structure(model: nn.Module, dataloader: DataLoader,
     optimizer = optim.Adam(model.parameters(), lr=lr)
     for epoch in range(epochs):
         model.train()
-        for input_, target in dataloader:
+        for (x_data, seq_inputs), (seq_labels, seq_pos) in dataloader:
             optimizer.zero_grad()
-            output = model(*input_)
+            _, cls_x, box_x = model(x_data, seq_inputs, False)
             cls_loss, iou_loss = \
-                losses.structure_loss(output, target)
+                losses.structure_loss((cls_x, box_x), (seq_labels, seq_pos))
             print(cls_loss, iou_loss)
             (cls_loss + iou_loss).backward()
             optimizer.step()
@@ -72,7 +72,6 @@ def test():
             'd_ffn': 32,
             'dec_n_pos': 512,
             'dec_layers': 3,
-            'dec_tail_layers': 1,
             'pad_idx': 0,
             'dropout': 0.1
         },
