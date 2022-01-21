@@ -262,9 +262,9 @@ class PositionalEncoder(nn.Module):
         super(PositionalEncoder, self).__init__()
         # TODO: 该模型不具有平移不变性与尺度不变性
         self.pos_mapping = nn.Sequential(
-            nn.Linear(d_input, d_model, bias=False),
+            nn.Conv1d(d_input, d_model, kernel_size=(1, 1), bias=False),
             nn.ReLU(inplace=True),
-            nn.Linear(d_model, d_model, bias=False),
+            nn.Conv1d(d_model, d_model, kernel_size=(1, 1), bias=False),
             nn.Dropout(dropout),
             nn.LayerNorm(d_model),
         )
