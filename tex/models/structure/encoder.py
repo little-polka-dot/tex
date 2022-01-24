@@ -260,14 +260,10 @@ class PositionalEncoder(nn.Module):
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
         super(PositionalEncoder, self).__init__()
-        # TODO: 该模型不具有平移不变性与尺度不变性
         self.pos_mapping = nn.Sequential(
-            nn.Conv1d(d_input, d_model, kernel_size=(1, 1), bias=False),
-            nn.ReLU(inplace=True),
-            nn.Conv1d(d_model, d_model, kernel_size=(1, 1), bias=False),
-            nn.Dropout(dropout),
+            nn.Linear(d_input, d_model, bias=False),
             nn.LayerNorm(d_model),
-        )
+        )  # TODO: 该模型不具有平移不变性与尺度不变性
         self.encoders = nn.ModuleList([
             attention.EncodeLayer(
                 d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
