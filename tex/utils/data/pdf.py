@@ -2,12 +2,15 @@
 # https://github.com/pymupdf/PyMuPDF
 # https://pypi.org/project/PyMuPDF/
 
+import fitz
+import numpy as np
+import cv2
+
 
 class Loader(object):
 
     def __init__(self, path):
-        from fitz import Document  # 非必须安装项
-        self._document = Document(path)
+        self._document = fitz.Document(path)
 
     def __enter__(self):
         return self
@@ -18,45 +21,46 @@ class Loader(object):
     def close(self):
         self._document.close()
 
-    def lines(self, page=0, color_threshold=0.0, reverse=False, line_max_width=2):
-        assert 0 <= color_threshold <= 1
-        doc_page = self._document[page]
-        for path in doc_page.get_drawings():
-            if reverse:
-                for item in path['items']:
-                    if item[0] == 're':  # 矩形填充为线条
-                        x0, y0, x1, y1 = item[1]
-                        if min(path['fill']) >= color_threshold \
-                                and 0 < min(x1-x0, y1-y0) <= line_max_width:
-                            yield x0, y0, x1, y1
-                    if item[0] == 'l':
-                        (x0, y0), (x1, y1) = item[1], item[2]
-                        if x0 == x1 or y0 == y1:  # 过滤出横竖线
-                            if min(path['color']) >= color_threshold \
-                                    and 0 < path["width"] <= line_max_width:
-                                yield x0, y0, x1, y1
-            else:
-                for item in path['items']:
-                    if item[0] == 're':  # 矩形填充为线条
-                        x0, y0, x1, y1 = item[1]
-                        if max(path['fill']) <= color_threshold \
-                                and 0 < min(x1-x0, y1-y0) <= line_max_width:
-                            yield x0, y0, x1, y1
-                    if item[0] == 'l':
-                        (x0, y0), (x1, y1) = item[1], item[2]
-                        if x0 == x1 or y0 == y1:  # 过滤出横竖线
-                            if max(path['color']) <= color_threshold \
-                                    and 0 < path["width"] <= line_max_width:
-                                yield x0, y0, x1, y1
+    def screenshot(self, path='screenshot.png', page=0, clip=None, ampl=(1, 1)):
+        mat = fitz.Matrix(*ampl)  # 放大系数
+        if clip is None:
+            clip = (0, 0, self.W(page), self.H(page))
+        clip = fitz.Rect(*clip)
+        self._document[page].get_pixmap(
+            matrix=mat, alpha=False, clip=clip).save(path)
 
-    def texts(self, page=0, return_text=False):
-        doc_page = self._document[page]
-        for text in doc_page.get_text("words"):
-            x0, y0, x1, y1, st = text[:5]
-            if return_text:
-                yield x0, y0, x1, y1, st
+    @staticmethod
+    def in_clip(x0, y0, x1, y1, clip=None):
+        return clip is None or (
+                x0 >= clip[0] and y0 >= clip[1] and x1 <= clip[2] and y1 <= clip[3])
+
+    def lines(self, page=0, color_threshold=0.0, reverse=False, line_max_width=2, clip=None):
+        def in_line(color, width):
+            if reverse:
+                return min(color) >= color_threshold \
+                       and 0 < width <= line_max_width
             else:
-                yield x0, y0, x1, y1
+                return max(color) <= color_threshold \
+                       and 0 < width <= line_max_width
+        assert 0 <= color_threshold <= 1
+        for path in self._document[page].get_drawings():
+            for item in path['items']:
+                if item[0] == 're':  # 矩形填充为线条
+                    x0, y0, x1, y1 = item[1]
+                    if self.in_clip(x0, y0, x1, y1, clip) and \
+                            in_line(path['fill'], min(x1-x0, y1-y0)):
+                        yield x0, y0, x1, y1
+                if item[0] == 'l':  # 直线
+                    (x0, y0), (x1, y1) = item[1], item[2]
+                    if x0 == x1 or y0 == y1:  # 过滤出横竖线
+                        if self.in_clip(x0, y0, x1, y1, clip) and \
+                                in_line(path['color'], path['width']):
+                            yield x0, y0, x1, y1
+
+    def texts(self, page=0, return_text=False, clip=None):
+        for text in self._document[page].get_text("words"):
+            if self.in_clip(*text[:4], clip):
+                yield text[:5] if return_text else text[:4]
 
     def width(self, page=0):
         return self._document[page].rect.width
@@ -68,22 +72,20 @@ class Loader(object):
 
     h = H = height
 
-
-def debug_bbox(w, h, bbox_list, fill=True):
-    import numpy as np
-    import cv2 as cv
-    background = np.zeros((int(h), int(w)))
-    for bbox in bbox_list:  # x0 y0 x1 y1
-        if fill:
-            background[int(bbox[1]):int(bbox[3])+1, int(bbox[0]):int(bbox[2])+1] = 1
-        else:
-            background = cv.rectangle(
-                background, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), 1)
-    cv.imshow('', background)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    def bbox2mask(self, page, bbox_list, fill=True):
+        w, h = self.W(page), self.H(page)
+        background = np.zeros((int(h), int(w)))
+        for bbox in bbox_list:  # x0 y0 x1 y1
+            x0, y0, x1, y1 = [int(i) for i in bbox]
+            if fill:
+                background[y0:y1+1, x0:x1+1] = 1
+            else:
+                background = cv2.rectangle(
+                    background, (x0, y0), (x1, y1), 1)
+        return background  # cv2.imwrite(...*255)
 
 
 if __name__ == '__main__':
     with Loader('E:/Code/Mine/github/tex/test/pdf/89df2a78460636a6fa35edb53ade119b.pdf') as l:
-        debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
+        # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
+        l.screenshot(page=5)

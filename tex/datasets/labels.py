@@ -67,7 +67,7 @@ class StructLang(object):
 
     @property
     def size(self):
-        return self._rows * self._cols + self._rows
+        return self._rows * self._cols
 
     @property
     def data(self):

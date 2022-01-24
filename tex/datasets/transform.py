@@ -1,10 +1,12 @@
+import torch
+
 from tex.datasets.labels import StructLang
 import random
 import numpy as np
 import cv2
 
 
-class BackboneStructureTransform(object):
+class ConStructureTransform(object):
 
     threshold_type = cv2.THRESH_TOZERO  # 超出阈值的保持不变 低于阈值的取0
 
@@ -43,7 +45,7 @@ class BackboneStructureTransform(object):
         seq_inputs = np.array(description.labels(self._seq_len,  True, True))
 
         if self._normalize_position:  # 坐标归一化
-            # TODO: 坐标归一化逻辑有问题 参考PositionalStructureTransform
+            # TODO: 坐标归一化逻辑有问题 参考PosStructureTransform
             seq_positions = np.array([
                 [
                     i[0] / x_data.shape[1],  # x / W
@@ -83,7 +85,7 @@ class BackboneStructureTransform(object):
         return (x_data, seq_inputs), (seq_labels, seq_positions)
 
 
-class PositionalStructureTransform(object):
+class PosStructureTransform(object):
 
     def __init__(self, enc_len, dec_len, normalize_position=True, transform_position=False):
         self._enc_len = enc_len
@@ -92,7 +94,10 @@ class PositionalStructureTransform(object):
         self._transform_position = transform_position
 
     def __call__(self, x_data, y_data):
-        # x_data [enc_len, 4] y_data description:[dec_len] position:[dec_len, 4]
+        # x_data [enc_len, 4] y_data {description:StructLang position:[dec_len, 4]}
+
+        # description的条数需要大于等于position条数
+        assert y_data['description'].size >= y_data['position'].shape[0]
 
         # y_data['position']一定在x_data集合最小外接矩形的范围内
         assert (x_data[:, 0] + x_data[:, 2]).max() >= (
@@ -105,9 +110,8 @@ class PositionalStructureTransform(object):
         boundary_w = (x_data[:, 0] + x_data[:, 2]).max() - x_data[:, 0].min()
         boundary_h = (x_data[:, 1] + x_data[:, 3]).max() - x_data[:, 1].min()
 
-        description = StructLang.from_object(y_data['description'])
-        seq_labels = np.array(description.labels(self._dec_len, False, True))
-        seq_inputs = np.array(description.labels(self._dec_len,  True, True))
+        seq_labels = np.array(y_data['description'].labels(self._dec_len, False, True))
+        seq_inputs = np.array(y_data['description'].labels(self._dec_len,  True, True))
 
         if self._normalize_position:  # 坐标归一化
             # 是否可以认为归一化可以去除掉尺度以及绝对坐标的信息？
@@ -150,6 +154,12 @@ class PositionalStructureTransform(object):
         else:
             x_data, seq_positions = np.array(x_data), np.array(y_data['position'])
 
+        # 将seq_positions与seq_labels对齐 对seq_positions按照y-x排序 然后根据seq_labels填充(0,0,0,0)
+        seq_positions = seq_positions[np.lexsort((seq_positions[:, 0], seq_positions[:, 1])), :]
+        for label_index, label in enumerate(seq_labels):
+            if label not in (StructLang.Vocab.CELL.value, StructLang.Vocab.HEAD.value):
+                seq_positions = np.insert(seq_positions, label_index, values=np.array([0, 0, 0, 0]), axis=0)
+
         if self._transform_position:  # TODO: [测试] x_data高维空间映射
             # (Xn, Yn, Wn, Hn) -> (Wn, Hn, Xn-X1, Yn-Y1, Xn-X2, Yn-Y2, ..., Xn-Xn, Yn-Yn)
             # TODO: 打乱序列顺序后模型是否还能正常识别？
@@ -165,48 +175,12 @@ class PositionalStructureTransform(object):
 
 
 if __name__ == '__main__':
-    # x = cv2.imread('F:/img.png', cv2.IMREAD_GRAYSCALE)
-    # print(x.shape)
-    #
-    # st = StructLang(2, 6)
-    # st.merge_cell((0, 1), (0, 2))
-    # st.merge_cell((0, 3), (1, 3))
-    # st.merge_cell((0, 4), (1, 5))
-    # st.merge_cell((1, 0), (1, 1))
-    #
-    # y = {
-    #     'description': st.to_object(),
-    #     'position': [[0, 0, 0, 0], [12, 12, 500, 32]],
-    # }
-    #
-    # (xd, si), (sl, sp) = BackboneStructureTransform(**{
-    #     'seq_len': 256,
-    #     'image_size': 800,
-    #     'normalize_position': True,
-    #     'gaussian_noise': False,
-    #     'flim_mode': False,
-    #     'gaussian_blur': None,
-    #     'threshold': 0.1,
-    # })(x, y)
-    # print(xd.shape)
-    # cv2.imshow('img', xd)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    # # print(x_data.shape)
-    # # print(seq_inputs)
-    # # print(seq_labels)
-    # # print(seq_position)
+    transform = PosStructureTransform(200, 200)
+    with open('E:/Code/Mine/github/tex/test/pdf/ea9858d5486bd46e04ede04a9a69db6.json', 'r', encoding='utf-8') as jf:
+        import json
+        data = json.load(jf)
+        for item in data[1:]:
+            transform(np.array(item['X']), {'description': StructLang.from_object(item['Y']['description']), 'position': np.array(item['Y']['position'])})
+            input()
 
-    # x = np.random.random((6, 4))
-    # print(x)
-    # print((x[:, 0] < x[:, 1]))
-
-    # x = np.random.random((2, 4))
-    # print(x)
-    # wh = x[:, 2:]
-    # l_value = np.tile(x[:, :2], (1, x.shape[0]))
-    # r_value = np.tile(x[:, :2].flatten(), (x.shape[0], 1))
-    # print(wh)
-    # print(np.hstack((x[:, 2:], l_value - r_value)))
-    pass
 

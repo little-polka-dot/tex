@@ -64,23 +64,11 @@ class SimpleImageDataset(Dataset):
         self.index.append(index_name)
 
 
-class RandomDataset(Dataset):
-
-    def __init__(self, path='dataset.db', transform=None):
-        self.transform = transform
-
-    def __len__(self):
-        pass
-
-    def __getitem__(self, index):
-        pass
-
-
 if __name__ == '__main__':
     pass
     # p = 'E:/Code/Mine/github/tex/test/.data/structure/train'
-    # from tex.datasets.transform import BackboneStructureTransformer
-    # config = BackboneStructureTransformer(**{
+    # from tex.datasets.transform import ConStructureTransformer
+    # config = ConStructureTransformer(**{
     #     'seq_len': 256,
     #     'image_size': 227,
     #     'normalize_position': True,

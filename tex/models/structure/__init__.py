@@ -1,13 +1,13 @@
 import torch.nn as nn
 
 
-# class BackboneStructure(nn.Module):
+# class ConStructure(nn.Module):
 #
 #     def __init__(self, im_channels, d_model, enc_block, enc_layers,
 #                  n_vocab, dec_len, n_head, d_k, d_ffn, enc_n_pos, dec_n_pos,
 #                  dec_layers, pad_idx=0, dropout=0.1):
 #
-#         super(BackboneStructure, self).__init__()
+#         super(ConStructure, self).__init__()
 #
 #         from tex.models.structure.encoder import BackboneEncoder as Encoder
 #         from tex.models.structure.decoder import Decoder

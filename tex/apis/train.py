@@ -80,7 +80,7 @@ def test():
             'dataset': {
                 'class': '.RandomDataset',
                 'transform': {
-                    'class': 'tex.datasets.transform.PositionalStructureTransform',
+                    'class': 'tex.datasets.transform.PosStructureTransform',
                     'enc_len': 50,
                     'dec_len': 50,
                     'normalize_position': True,
