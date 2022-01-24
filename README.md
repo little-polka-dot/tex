@@ -10,9 +10,9 @@
     表格结构抽取（ResNet + Transformer）
     文字识别模块（CRNN + CTC Loss）
 
-+ PositionalStructure
++ PosStructure
 
-![PosStructure](https://github.com/CatAtHome/tex/blob/main/img/PosStructure.png)
+![DisPosStructure](https://github.com/CatAtHome/tex/blob/main/img/DisPosStructure.png)
 
 
 ### Acknowledgements

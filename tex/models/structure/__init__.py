@@ -48,7 +48,7 @@ class PosStructure(nn.Module):
 
         super(PosStructure, self).__init__()
 
-        from tex.models.structure.encoder import PositionalEncoder as Encoder
+        from tex.models.structure.encoder import PosEncoder as Encoder
         from tex.models.structure.decoder import Decoder
 
         self.enc_net = Encoder(

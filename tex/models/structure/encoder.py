@@ -183,11 +183,11 @@ class BackbonePreprocess(nn.Module):
     def forward(self, x): return self.net(x)
 
 
-class BackboneEncoder(nn.Module):
+class ConEncoder(nn.Module):
 
     def __init__(self, d_input, d_model,
                  block: Union[Block, str], layers, d_layer=(64, 128, 256, 512)):
-        super(BackboneEncoder, self).__init__()
+        super(ConEncoder, self).__init__()
         if isinstance(block, str): block = globals()[block]
         self.pre_layer = BackbonePreprocess(d_input, d_layer[0])
         self.layers = nn.ModuleList([
@@ -256,10 +256,10 @@ class BackboneEncoder(nn.Module):
         return output.transpose(1, 2)
 
 
-class PositionalEncoder(nn.Module):
+class PosEncoder(nn.Module):
 
     def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
-        super(PositionalEncoder, self).__init__()
+        super(PosEncoder, self).__init__()
         self.pos_mapping = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.LayerNorm(d_model),
@@ -269,18 +269,25 @@ class PositionalEncoder(nn.Module):
                 d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
         ])
 
-    def forward(self, x):
-        m = self.encode_mask(x)
+    def forward(self, x, mask=None):
+        if mask is None:
+            mask = self.pos_mask(x)
         x = self.pos_mapping(x)
         for layer in self.encoders:
-            x = layer(x, m)
+            x = layer(x, mask)
         # [batch_size, len, dim]
-        return x, m  # mask to dec
+        return x, mask  # mask to dec
 
     @staticmethod
-    def encode_mask(x):
+    def pos_mask(x):
         # [batch_size, sql_len, d_input] -> [batch_size, 1, sql_len]
         return ((x > 0) | (x < 0)).any(-1).unsqueeze(-2)
+
+
+DisPosEncoder = PosEncoder
+
+
+class GenPosEncoder(nn.Module): pass
 
 
 if __name__ == '__main__':

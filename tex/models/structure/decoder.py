@@ -9,8 +9,8 @@ class Decoder(nn.Module):
                  pad_idx=0, dropout=0.1, d_ffn=None, n_position=256):
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(n_vocab, d_model, padding_idx=pad_idx)
-        self.pos_enc = attention.PositionalEncoding(d_model, n_position)
         self.dropout = nn.Dropout(dropout)
+        self.pos_enc = attention.PositionalEncoding(d_model, n_position)
         self.norm = nn.LayerNorm(d_model)
         self.decoders = nn.ModuleList([
             attention.DecodeLayer(
@@ -24,8 +24,8 @@ class Decoder(nn.Module):
     def decode(self, dec_input, enc_value, enc_mask=None):
         slf_m = attention.pad_mask(
             dec_input, self.pad_idx) & attention.subsequent_mask(dec_input)
-        out_x = self.norm(self.dropout(
-            self.pos_enc(self.embedding(dec_input) * (self.d_model ** 0.5))))
+        out_x = self.norm(self.pos_enc(
+            self.dropout(self.embedding(dec_input)) * (self.d_model ** 0.5)))
         for layer in self.decoders:
             out_x = layer(out_x, enc_value, slf_mask=slf_m, enc_mask=enc_mask)
         cls_x = self.cls_fc(out_x)  # 序列分类
@@ -55,7 +55,10 @@ class Decoder(nn.Module):
                 dec_input, enc_value, enc_mask=enc_mask)
 
 
-class DecoderG(nn.Module): pass
+DisDecoder = Decoder
+
+
+class GenDecoder(nn.Module): pass
 
 
 # if __name__ == '__main__':
