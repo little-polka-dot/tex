@@ -12,7 +12,7 @@
 
 + PositionalStructure
 
-![PositionalStructure](https://github.com/CatAtHome/tex/blob/main/img/PositionalStructure.png)
+![PosStructure](https://github.com/CatAtHome/tex/blob/main/img/PosStructure.png)
 
 
 ### Acknowledgements
