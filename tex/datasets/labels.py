@@ -1,5 +1,5 @@
 import json
-from typing import List, Dict, Tuple, Any, Callable, Iterable
+from typing import Tuple, Any, Callable, Iterable, Union, List
 from enum import Enum, unique
 from io import StringIO
 
@@ -14,15 +14,15 @@ class StructLang(object):
         PAD = 0
         SOS = 1
         EOS = 2
+        ENTER = 3
 
     @unique
     class Vocab(Enum):
-        LINE = 0
-        CELL = 1
-        HEAD = 2
-        TAIL_H = 3
-        TAIL_V = 4
-        TAIL_T = 5
+        CELL = 0
+        HEAD = 1
+        TAIL_H = 2
+        TAIL_V = 3
+        TAIL_T = 4
 
     def __init__(self, rows: int = 0, cols: int = 0, auto_init: bool = True):
         self._rows = rows
@@ -67,6 +67,7 @@ class StructLang(object):
 
     @property
     def size(self):
+        """ count of cells """
         return self._rows * self._cols
 
     @property
@@ -128,24 +129,25 @@ class StructLang(object):
             self._data[pos[0]][col] = self.Vocab.CELL
         self._data[pos[0]][pos[1]] = self.Vocab.CELL
 
-    def items(self):
-        for row in range(self._rows):
-            yield self.Vocab.LINE
-            for col in range(self._cols):
-                yield self._data[row][col]
+    @classmethod
+    def real_label(cls, e: Union[Placeholder, Vocab, List[Union[Placeholder, Vocab]]]):
+        def label(x):
+            return x.value if isinstance(x, cls.Placeholder) else x.value + len(cls.Placeholder)
+        return [label(i) for i in e] if isinstance(e, Iterable) else label(e)
 
-    def flatten(self, offset=0):
-        return [i.value + offset for i in self.items()]
+    def row(self, idx=0):
+        for col in range(self._cols): yield self._data[idx][col]
+
+    def col(self, idx=0):
+        for row in range(self._rows): yield self._data[row][idx]
 
     def labels(self, seq_len=0, use_sos=False, use_eos=False, cut_len=0):
-        lab = self.flatten(len(self.Placeholder))  # 占位符在前
-        if use_sos:
-            lab = [self.Placeholder.SOS.value, *lab]
-        if use_eos:
-            lab = [*lab, self.Placeholder.EOS.value]
+        lab = [self.real_label(i) for i in sum([
+            [self.Placeholder.ENTER, *self.row(i)] for i in range(self._rows)], [])]
+        if use_sos: lab = [self.Placeholder.SOS.value, *lab]
+        if use_eos: lab = [*lab, self.Placeholder.EOS.value]
         if 0 < cut_len < len(lab): lab = lab[:cut_len]
-        return lab + [
-            self.Placeholder.PAD.value] * (seq_len - len(lab))
+        return lab + [self.Placeholder.PAD.value] * (seq_len - len(lab))
 
     def __str__(self):
         return '\n'.join(['\t'.join([self._data[row][col].name for col in range(
@@ -275,7 +277,7 @@ if __name__ == '__main__':
         },
     ]
 
-    def from_coordinate(coordinate: List[Dict[str, int]],
+    def from_coordinate(coordinate,
                         keys=('startRowIndex', 'startColIndex', 'endRowIndex', 'endColIndex')):
         def is_merge_cell(n):
             return n[keys[0]] < n[keys[2]] or n[keys[1]] < n[keys[3]]
@@ -309,13 +311,13 @@ if __name__ == '__main__':
     print(st.labels(20, False, True))
     print(st.labels(20, False, True, 15))
 
-    # s = StructLang(6, 6)
-    # s.merge_cell((0, 1), (0, 5))
-    # print(
-    #     s.to_html(
-    #         lambda: [('class', 'table'), ('width', '600'), ('height', '600')],
-    #         lambda r, c: [('id', f'{r}-{c}')],
-    #         lambda r, c: f'{r}-{c}',
-    #         2, 1
-    #     )
-    # )
+    s = StructLang(6, 6)
+    s.merge_cell((0, 1), (0, 5))
+    print(
+        s.to_html(
+            lambda: [('class', 'table'), ('width', '600'), ('height', '600')],
+            lambda r, c: [('id', f'{r}-{c}')],
+            lambda r, c: f'{r}-{c}',
+            2, 1
+        )
+    )
