@@ -9,7 +9,7 @@ import torch.nn as nn
 #
 #         super(ConStructure, self).__init__()
 #
-#         from tex.models.structure.encoder import BackboneEncoder as Encoder
+#         from tex.models.structure.encoder import ConEncoder as Encoder
 #         from tex.models.structure.decoder import Decoder
 #         from tex.models.transformer.attention import PositionalEncoding
 #
