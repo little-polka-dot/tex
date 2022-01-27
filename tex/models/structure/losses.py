@@ -77,12 +77,12 @@ def structure_loss(
 if __name__ == '__main__':
     a = (
         torch.randn([1, 3, 9]),
-        torch.tensor([[[1, 1, 2, 2], [2, 2, 2, 2], [1, 1, 1, 1]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.2, 0.2], [0.2, 0.2, 0.2, 0.2], [0.1, 0.1, 0.1, 0.1]]], dtype=torch.float64)
     )
     print(a[0].size(), a[1].size())
     b = (
         torch.randint(9, [1, 3]),
-        torch.tensor([[[1, 1, 2, 2.1], [2, 2, 2, 2.1], [1, 1, 0, 1]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.3, 0.3], [0.2, 0.2, 0.3, 0.3], [0.0, 0.0, 0.0, 0.0]]], dtype=torch.float64)
     )
     print(b[0].dtype, b[1].dtype)
     print(structure_loss(a, b)[1])

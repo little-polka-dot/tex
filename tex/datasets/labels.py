@@ -18,11 +18,11 @@ class StructLang(object):
 
     @unique
     class Vocab(Enum):
-        CELL = 0
-        HEAD = 1
-        TAIL_H = 2
-        TAIL_V = 3
-        TAIL_T = 4
+        CELL = 4
+        HEAD = 5
+        TAIL_H = 6
+        TAIL_V = 7
+        TAIL_T = 8
 
     def __init__(self, rows: int = 0, cols: int = 0, auto_init: bool = True):
         self._rows = rows
@@ -129,12 +129,6 @@ class StructLang(object):
             self._data[pos[0]][col] = self.Vocab.CELL
         self._data[pos[0]][pos[1]] = self.Vocab.CELL
 
-    @classmethod
-    def real_label(cls, e: Union[Placeholder, Vocab, List[Union[Placeholder, Vocab]]]):
-        def label(x):
-            return x.value if isinstance(x, cls.Placeholder) else x.value + len(cls.Placeholder)
-        return [label(i) for i in e] if isinstance(e, Iterable) else label(e)
-
     def row(self, idx=0):
         for col in range(self._cols): yield self._data[idx][col]
 
@@ -142,7 +136,7 @@ class StructLang(object):
         for row in range(self._rows): yield self._data[row][idx]
 
     def labels(self, seq_len=0, use_sos=False, use_eos=False, cut_len=0):
-        lab = [self.real_label(i) for i in sum([
+        lab = [i.value for i in sum([
             [self.Placeholder.ENTER, *self.row(i)] for i in range(self._rows)], [])]
         if use_sos: lab = [self.Placeholder.SOS.value, *lab]
         if use_eos: lab = [*lab, self.Placeholder.EOS.value]

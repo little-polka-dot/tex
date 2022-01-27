@@ -263,7 +263,7 @@ class PosEncoder(nn.Module):
         self.pos_mapping = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
             nn.LayerNorm(d_model),
-        )  # TODO: 该模型不具有平移不变性与尺度不变性
+        )  # 该模型不具有平移不变性与尺度不变性
         self.encoders = nn.ModuleList([
             attention.EncodeLayer(
                 d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)

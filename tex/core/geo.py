@@ -83,6 +83,6 @@ def aspect_ratio(box): return box[:, 2] / box[:, 3]  # 矩形宽高比
 
 
 if __name__ == '__main__':
-    a = torch.abs(torch.randn((10, 4)))
-    b = torch.abs(torch.randn((10, 4)))
-    x = center_distance(a, b)
+    a = torch.abs(torch.randn((1, 4)))
+    b = torch.abs(torch.randn((1, 4)))
+    x = min_enclosing_rect(a, b)

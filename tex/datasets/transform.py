@@ -87,7 +87,7 @@ class ConStructureTransform(object):
 
 class PosStructureTransform(object):
 
-    label_alignment = (StructLang.Vocab.CELL, StructLang.Vocab.HEAD)
+    label_alignment = (StructLang.Vocab.CELL.value, StructLang.Vocab.HEAD.value)
 
     def __init__(self, enc_len, dec_len):
         self._enc_len = enc_len
@@ -101,7 +101,7 @@ class PosStructureTransform(object):
 
         # 表结构描述的具有边界的单元格数一定与边界集合数目相同
         assert y_position.shape[0] == len(
-            [i for i in sum(y_description.data, []) if i in self.label_alignment])
+            [i for i in sum(y_description.data, []) if i.value in self.label_alignment])
 
         # 计算线条与文本框集合的最小外接矩形
         # 有线的情况下线的最小外接矩形作为边界 否则单元格最小外接矩形会作为边界
@@ -162,13 +162,14 @@ class PosStructureTransform(object):
         # x_data = np.hstack((x_data[:, 2:], l_value - r_value))
 
         # 线条与文本框坐标信息集合结尾处填充(0,0,0,0)
-        x_data = np.vstack((x_data, np.zeros((self._enc_len - x_data.shape[0], x_data.shape[1]))))
+        x_data = np.vstack(
+            (x_data, np.zeros((self._enc_len - x_data.shape[0], x_data.shape[1]))))
 
         # 对齐单元格坐标信息与表结构描述 对seq_positions按照y-x排序 然后根据seq_labels填充(0,0,0,0)
         seq_positions = seq_positions[np.lexsort((seq_positions[:, 0], seq_positions[:, 1])), :]
         for label_index, label in enumerate(seq_labels):
             # 仅有cell与head两个类型的单元格有坐标描述信息
-            if label not in StructLang.real_label(self.label_alignment):
+            if label not in self.label_alignment:
                 seq_positions = np.insert(
                     seq_positions, label_index, values=np.array([0, 0, 0, 0]), axis=0)
 
@@ -179,39 +180,42 @@ class PosStructureTransform(object):
         return (x_data, seq_inputs), (seq_labels, seq_positions)
 
 
-# if __name__ == '__main__':
-#     transform = PosStructureTransform(1024, 512)
-#     with open('E:/Code/Mine/github/tex/test/pdf/ea9858d5486bd46e04ede04a9a69db6.json', 'r', encoding='utf-8') as jf:
-#         import json
-#         data = json.load(jf)
-#         for item in data[1:]:
-#             if item['DESC']['page'] == 26:
-#                 print()
-#             print(item['DESC'])
-#             x = item['X']
-#             y = item['Y']['description'], item['Y']['position']
-#             x_, y_ = transform(x, y)
-#             b = 800
-#             g_1 = np.zeros((b, b))
-#             # print('线条与文本框')
-#             for i in x_[0]:  # 线条与文本框
-#                 i = [int(r*b) for r in i]
-#                 # print(i)
-#                 g_1[i[1]:i[1] + i[3]+1, i[0]:i[0] + i[2]+1] = 255
-#                 # cv2.imshow('1', g_1)
-#                 # cv2.waitKey(0)
-#                 # cv2.destroyAllWindows()
-#             g_2 = np.zeros((b, b))
-#             # print('单元格')
-#             for idx, i in enumerate(y_[1]):  # 单元格
-#                 i = [int(r * b) for r in i]
-#                 m = ['PAD','SOS','EOS','ENTER','CELL','HEAD','TAIL_H','TAIL_V','TAIL_T']
-#                 # print(m[y_[0][idx]], i)
-#                 g_2 = cv2.rectangle(
-#                     g_2, (i[0], i[1]), (i[0] + i[2], i[1] + i[3]), 1)
-#             cv2.imshow('1', g_1)
-#             cv2.imshow('2', g_2)
-#             cv2.waitKey(0)
-#             cv2.destroyAllWindows()
+if __name__ == '__main__':
+    transform = PosStructureTransform(1024, 512)
+    with open(r'E:\Code\Mine\github\tex\test\pdf\data.json', 'r', encoding='utf-8') as jf:
+        import json
+        data = json.load(jf)
+        for item in data[113:]:
+            print(item['DESC'])
+            x = item['X']
+            y = item['Y']['description'], item['Y']['position']
+            x_, y_ = transform(x, y)
+            b = 800
+            g_1 = np.zeros((b, b))
+            # print('线条与文本框')
+            for i in x_[0]:  # 线条与文本框
+                i = [int(r*b) for r in i]
+                # print(i)
+                g_1[i[1]:i[1] + i[3]+1, i[0]:i[0] + i[2]+1] = 255
+                # cv2.imshow('1', g_1)
+                # cv2.waitKey(0)
+                # cv2.destroyAllWindows()
+            g_2 = np.zeros((b, b))
+            # print('单元格')
+            for idx, i in enumerate(y_[1]):  # 单元格
+                i = [int(r * b) for r in i]
+                m = ['PAD','SOS','EOS','ENTER','CELL','HEAD','TAIL_H','TAIL_V','TAIL_T']
+                # print(m[y_[0][idx]], i)
+                g_2 = cv2.rectangle(
+                    g_2, (i[0], i[1]), (i[0] + i[2], i[1] + i[3]), 1)
+                if i[0] > 0 or i[1] > 0 or i[2] > 0 or i[3] > 0:
+                    cv2.imshow('2', g_2)
+                    print(i)
+                    cv2.waitKey(0)
+                    cv2.destroyAllWindows()
+            cv2.imshow('1', g_1)
+            cv2.imshow('2', g_2)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
 
 
