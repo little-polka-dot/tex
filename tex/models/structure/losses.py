@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
-import tex.core.geo as geo
+import tex.core.box as box
 
 
 def iou_loss(output, target, ignore_zero=True):
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = torch.diag(geo.jaccard(target, output))
+    iou = torch.diag(box.jaccard(target, output))
     # -torch.log(iou) inf会导致模型无法拟合
     return torch.mean(1 - iou)
 
@@ -17,10 +17,10 @@ def distance_iou_loss(output, target, ignore_zero=True):
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = torch.diag(geo.jaccard(target, output))
-    drc = geo.center_distance(target, output)
-    lnd = geo.diag_length(
-        geo.min_enclosing_rect(target, output))
+    iou = torch.diag(box.jaccard(target, output))
+    drc = box.center_distance(target, output)
+    lnd = box.diag_length(
+        box.min_enclosing_rect(target, output))
     # TODO 取最大值还是取平均值?
     return torch.mean(1 - iou + drc / lnd)
 
@@ -30,12 +30,12 @@ def complete_iou_loss(output, target, ignore_zero=True):
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = torch.diag(geo.jaccard(target, output))
-    drc = geo.center_distance(target, output)  # 矩形中心距离
-    lnd = geo.diag_length(
-        geo.min_enclosing_rect(target, output))
-    ast = torch.arctan(geo.aspect_ratio(target))
-    aso = torch.arctan(geo.aspect_ratio(output))
+    iou = torch.diag(box.jaccard(target, output))
+    drc = box.center_distance(target, output)  # 矩形中心距离
+    lnd = box.diag_length(
+        box.min_enclosing_rect(target, output))
+    ast = torch.arctan(box.aspect_ratio(target))
+    aso = torch.arctan(box.aspect_ratio(output))
     con = (4 / (torch.pi * torch.pi))  # 4/pi^2
     val = con * torch.pow(ast - aso, 2)
     aph = val / ((1 - iou) + val)  # 完全重合时该值为nan
@@ -60,8 +60,8 @@ def batch_mean(loss_func, outputs, targets, **kwargs):
     )
 
 
-def structure_loss(
-        outputs, targets, ignore_zero=True, pad_idx=0, smoothing=0.1, weight=None):
+def structure_loss(outputs, targets,
+                   ignore_zero=True, pad_idx=0, smoothing=0.1, weight=None):
     """ 如果输入box为(x,y,w,h)格式 则设置is_transform为True """
     # outputs tuple([batch_size, seq_len, dim], [batch_size, seq_len, 4])
     # targets tuple([batch_size, seq_len], [batch_size, seq_len, 4])
@@ -76,13 +76,18 @@ def structure_loss(
 
 if __name__ == '__main__':
     a = (
-        torch.randn([1, 3, 9]),
-        torch.tensor([[[0.1, 0.1, 0.2, 0.2], [0.2, 0.2, 0.2, 0.2], [0.1, 0.1, 0.1, 0.1]]], dtype=torch.float64)
+        torch.tensor([[[1.4949, 0.7972, -0.3455, -0.4040, 1.2417, 0.4645, 0.1462,
+                  1.9950, 1.3542],
+                 [-0.0285, -0.2565, -0.0992, 0.0920, 0.8295, 0.3249, 0.1341,
+                  -0.4668, -1.3706],
+                 [1.2456, -0.5448, -0.5127, -0.3453, 0.6549, -0.1191, -0.4428,
+                  -0.4353, -0.4258]]]),
+        torch.tensor([[[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100]]], dtype=torch.float64)
     )
-    print(a[0].size(), a[1].size())
+    print(a[0].argmax(-1))
     b = (
-        torch.randint(9, [1, 3]),
-        torch.tensor([[[0.1, 0.1, 0.3, 0.3], [0.2, 0.2, 0.3, 0.3], [0.0, 0.0, 0.0, 0.0]]], dtype=torch.float64)
+        torch.tensor([[7, 4, 0]]),
+        torch.tensor([[[100, 100, 125, 125], [100, 100, 125, 125], [100, 100, 125, 125]]], dtype=torch.float64)
     )
-    print(b[0].dtype, b[1].dtype)
-    print(structure_loss(a, b)[1])
+
+    print(structure_loss(a, b, smoothing=0))

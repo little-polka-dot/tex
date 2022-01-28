@@ -82,6 +82,11 @@ def diag_length(box, is_sqrt=False):
 def aspect_ratio(box): return box[:, 2] / box[:, 3]  # 矩形宽高比
 
 
+def rectangle_intersect(box_a, box_b):
+    assert box_a.size(-1) == box_b.size(-1) == 4
+    box_a.index_select(-1, 0)
+
+
 if __name__ == '__main__':
     a = torch.abs(torch.randn((1, 4)))
     b = torch.abs(torch.randn((1, 4)))

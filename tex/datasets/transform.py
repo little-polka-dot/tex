@@ -197,9 +197,10 @@ if __name__ == '__main__':
                 i = [int(r*b) for r in i]
                 # print(i)
                 g_1[i[1]:i[1] + i[3]+1, i[0]:i[0] + i[2]+1] = 255
-                # cv2.imshow('1', g_1)
-                # cv2.waitKey(0)
-                # cv2.destroyAllWindows()
+                if i[0] > 0 or i[1] > 0 or i[2] > 0 or i[3] > 0:
+                    cv2.imshow('1', g_1)
+                    cv2.waitKey(0)
+                    cv2.destroyAllWindows()
             g_2 = np.zeros((b, b))
             # print('单元格')
             for idx, i in enumerate(y_[1]):  # 单元格
