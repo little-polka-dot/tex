@@ -4,10 +4,10 @@ import torch
 def box_split(box, keepdim=False):
     assert box.size(-1) == 4  # dim=-1 [x y w h]
     rect_tuple = (
-        box.index_select(-1, torch.tensor(0)),
-        box.index_select(-1, torch.tensor(1)),
-        box.index_select(-1, torch.tensor(2)),
-        box.index_select(-1, torch.tensor(3))
+        box.index_select(-1, torch.tensor(0, device=box.device)),
+        box.index_select(-1, torch.tensor(1, device=box.device)),
+        box.index_select(-1, torch.tensor(2, device=box.device)),
+        box.index_select(-1, torch.tensor(3, device=box.device))
     )
     return rect_tuple if keepdim \
         else (i.squeeze(-1) for i in rect_tuple)
@@ -82,8 +82,10 @@ def intersect(box_a, box_b):
     )
 
     inter = torch.clamp((max_xy - min_xy), min=0)
-    inter_w = inter.index_select(-1, torch.tensor(0)).squeeze(-1)
-    inter_h = inter.index_select(-1, torch.tensor(1)).squeeze(-1)
+    inter_w = inter.index_select(
+        -1, torch.tensor(0, device=inter.device)).squeeze(-1)
+    inter_h = inter.index_select(
+        -1, torch.tensor(1, device=inter.device)).squeeze(-1)
 
     return inter_w * inter_h
 
@@ -118,8 +120,8 @@ def iou(box_a, box_b):
 
 def ssi(box, contain_self=False):
     """ 矩形集合与自身相交的面积总和 """
-    return torch.sum(torch.triu(
-        intersect(box, box), 0 if contain_self else 1))
+    return torch.sum(
+        torch.triu(intersect(box, box), 0 if contain_self else 1))
 
 
 def mbr(*args):
@@ -135,7 +137,7 @@ def mbr(*args):
 
 
 if __name__ == '__main__':
-    a = torch.tensor([[90, 100, 100, 130], [100, 100, 100, 100], [40, 90, 100, 100]], dtype=torch.float64)
-    b = torch.tensor([[100, 100, 125, 125], [100, 100, 125, 125], [100, 100, 100, 200]], dtype=torch.float64)
+    a = torch.tensor([[[90, 100, 100, 130], [100, 100, 100, 100], [40, 90, 100, 100]]], dtype=torch.float64)
+    b = torch.tensor([[[100, 100, 125, 125], [100, 100, 125, 125], [100, 100, 100, 200]]], dtype=torch.float64)
 
     print(mbr(a, b))
