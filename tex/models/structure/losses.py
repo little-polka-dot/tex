@@ -41,6 +41,21 @@ def complete_iou_loss(output, target, ignore_zero=True):
     return torch.mean(loss)
 
 
+def tile_penalty(box_a, box_b):
+    """
+    f = 矩形集合的重叠面积和 + 矩形集合最小外接矩形与矩形集合面积和的差值
+    return: | f(a) - f(b) |
+    """
+    # TODO: 是否需要归一化？
+    a_mbr, a_ssi = geo.mbr(box_a), geo.ssi(box_a)
+    b_mbr, b_ssi = geo.mbr(box_b), geo.ssi(box_b)
+    a_tile = a_ssi + torch.abs(
+        geo.area(a_mbr) - torch.sum(geo.area(box_a)))
+    b_tile = b_ssi + torch.abs(
+        geo.area(b_mbr) - torch.sum(geo.area(box_b)))
+    return torch.abs(a_tile - b_tile)
+
+
 def tile_iou_loss(output, target, ignore_zero=True):
     if ignore_zero:  # 不支持batch_size维度
         output = output[(target > 0).any(-1)]
@@ -48,13 +63,13 @@ def tile_iou_loss(output, target, ignore_zero=True):
     iou = geo.iou(target, output)
     mbr_diag = geo.diag_length(geo.mbr(target, output))
     d_center = geo.center_distance(target, output)
-    loss = 1 - iou + d_center / mbr_diag
-    p_area = geo.ssi(output) + torch.abs(
-        geo.area(geo.mbr(output)) - torch.sum(geo.area(output)))
-    t_area = geo.ssi(target) + torch.abs(
-        geo.area(geo.mbr(target)) - torch.sum(geo.area(target)))
-    loss = loss + torch.abs(p_area - t_area)
-    return torch.mean(loss)
+    asp_tar = torch.arctan(geo.aspect_ratio(target))
+    asp_pre = torch.arctan(geo.aspect_ratio(output))
+    value = torch.pow(
+        asp_tar - asp_pre, 2) * (4 / (torch.pi * torch.pi))
+    alpha = value / ((1 - iou) + value)  # 完全重合时该值为nan
+    loss = 1 - iou + d_center / mbr_diag + alpha * value
+    return torch.mean(loss + tile_penalty(output, target))
 
 
 def cls_loss(output, target, pad_idx=0, smoothing=0.1, weight=None):
