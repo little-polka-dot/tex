@@ -1,45 +1,60 @@
 import torch
 import torch.nn.functional as F
-import tex.core.box as box
+import tex.core.geometry as geo
 
 
 def iou_loss(output, target, ignore_zero=True):
-    if ignore_zero:
+    if ignore_zero:  # 不支持batch_size维度
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = torch.diag(box.jaccard(target, output))
-    # -torch.log(iou) inf会导致模型无法拟合
-    return torch.mean(1 - iou)
+    iou = geo.iou(target, output)
+    loss = 1 - iou  # -torch.log(iou) inf会导致模型无法拟合
+    return torch.mean(loss)
 
 
 def distance_iou_loss(output, target, ignore_zero=True):
     """ DIoU """
-    if ignore_zero:
+    if ignore_zero:  # 不支持batch_size维度
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = torch.diag(box.jaccard(target, output))
-    drc = box.center_distance(target, output)
-    lnd = box.diag_length(
-        box.min_enclosing_rect(target, output))
-    # TODO 取最大值还是取平均值?
-    return torch.mean(1 - iou + drc / lnd)
+    iou = geo.iou(target, output)
+    mbr_diag = geo.diag_length(geo.mbr(target, output))
+    d_center = geo.center_distance(target, output)
+    loss = 1 - iou + d_center / mbr_diag
+    return torch.mean(loss)
 
 
 def complete_iou_loss(output, target, ignore_zero=True):
     """ CIoU """
-    if ignore_zero:
+    if ignore_zero:  # 不支持batch_size维度
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = torch.diag(box.jaccard(target, output))
-    drc = box.center_distance(target, output)  # 矩形中心距离
-    lnd = box.diag_length(
-        box.min_enclosing_rect(target, output))
-    ast = torch.arctan(box.aspect_ratio(target))
-    aso = torch.arctan(box.aspect_ratio(output))
-    con = (4 / (torch.pi * torch.pi))  # 4/pi^2
-    val = con * torch.pow(ast - aso, 2)
-    aph = val / ((1 - iou) + val)  # 完全重合时该值为nan
-    return torch.mean(1 - iou + drc / lnd + aph * val)
+    iou = geo.iou(target, output)
+    mbr_diag = geo.diag_length(geo.mbr(target, output))
+    d_center = geo.center_distance(target, output)
+    asp_tar = torch.arctan(geo.aspect_ratio(target))
+    asp_pre = torch.arctan(geo.aspect_ratio(output))
+    value = torch.pow(
+        asp_tar - asp_pre, 2) * (4 / (torch.pi * torch.pi))
+    alpha = value / ((1 - iou) + value)  # 完全重合时该值为nan
+    loss = 1 - iou + d_center / mbr_diag + alpha * value
+    return torch.mean(loss)
+
+
+def tile_iou_loss(output, target, ignore_zero=True):
+    if ignore_zero:  # 不支持batch_size维度
+        output = output[(target > 0).any(-1)]
+        target = target[(target > 0).any(-1)]
+    iou = geo.iou(target, output)
+    mbr_diag = geo.diag_length(geo.mbr(target, output))
+    d_center = geo.center_distance(target, output)
+    loss = 1 - iou + d_center / mbr_diag
+    p_area = geo.ssi(output) + torch.abs(
+        geo.area(geo.mbr(output)) - torch.sum(geo.area(output)))
+    t_area = geo.ssi(target) + torch.abs(
+        geo.area(geo.mbr(target)) - torch.sum(geo.area(target)))
+    loss = loss + torch.abs(p_area - t_area)
+    return torch.mean(loss)
 
 
 def cls_loss(output, target, pad_idx=0, smoothing=0.1, weight=None):
@@ -70,7 +85,7 @@ def structure_loss(outputs, targets,
     cls_loss_value = batch_mean(
         cls_loss, cls_output, cls_target, pad_idx=pad_idx, smoothing=smoothing, weight=weight)
     iou_loss_value = batch_mean(
-        complete_iou_loss, box_output, box_target, ignore_zero=ignore_zero)
+        tile_iou_loss, box_output, box_target, ignore_zero=ignore_zero)
     return cls_loss_value, iou_loss_value
 
 
@@ -82,12 +97,15 @@ if __name__ == '__main__':
                   -0.4668, -1.3706],
                  [1.2456, -0.5448, -0.5127, -0.3453, 0.6549, -0.1191, -0.4428,
                   -0.4353, -0.4258]]]),
-        torch.tensor([[[100, 100, 100, 100], [100, 100, 100, 100], [100, 100, 100, 100]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1]]], dtype=torch.float64)
     )
     print(a[0].argmax(-1))
     b = (
         torch.tensor([[7, 4, 0]]),
-        torch.tensor([[[100, 100, 125, 125], [100, 100, 125, 125], [100, 100, 125, 125]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.125, 0.2], [0.1, 0.1, 0.125, 0.2], [0.1, 0.1, 0.125, 0.2]]], dtype=torch.float64)
     )
 
-    print(structure_loss(a, b, smoothing=0))
+    print(iou_loss(a[1], b[1]))
+    print(distance_iou_loss(a[1], b[1]))
+    print(complete_iou_loss(a[1], b[1]))
+    print(tile_iou_loss(a[1], b[1]))
