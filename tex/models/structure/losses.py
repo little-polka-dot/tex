@@ -46,7 +46,7 @@ def tile_penalty(box_a, box_b):
     f = 矩形集合的重叠面积和 + 矩形集合最小外接矩形与矩形集合面积和的差值
     return: | f(a) - f(b) |
     """
-    # TODO: 是否需要归一化？
+    # TODO: 计算过程中是否需要归一化?
     a_mbr, a_ssi = geo.mbr(box_a), geo.ssi(box_a)
     b_mbr, b_ssi = geo.mbr(box_b), geo.ssi(box_b)
     a_tile = a_ssi + torch.abs(
