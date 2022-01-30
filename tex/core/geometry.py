@@ -23,7 +23,7 @@ def center_distance(box_a, box_b, is_sqrt=False):
     return torch.sqrt(dist) if is_sqrt else dist
 
 
-def diag_length(box, is_sqrt=False):
+def diag(box, is_sqrt=False):
     """ 矩形对角线长度 """
     _, _, box_w, box_h = box_split(box, keepdim=False)
     dist = torch.pow(box_w, 2) + torch.pow(box_h, 2)
@@ -140,4 +140,7 @@ if __name__ == '__main__':
     a = torch.tensor([[[90, 100, 100, 130], [100, 100, 100, 100], [40, 90, 100, 100]]], dtype=torch.float64)
     b = torch.tensor([[[100, 100, 125, 125], [100, 100, 125, 125], [100, 100, 100, 200]]], dtype=torch.float64)
 
-    print(sum_si(a))
+    x = jaccard(a, b)
+    y = iou(a, b)
+
+    print('...')

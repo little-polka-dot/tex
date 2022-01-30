@@ -4,6 +4,7 @@ import tex.core.geometry as geo
 
 
 def iou_loss(output, target, ignore_zero=True):
+    """ IoU 输入： [seq_len, 4] """
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
@@ -18,7 +19,7 @@ def distance_iou_loss(output, target, ignore_zero=True):
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
-    mbr_diag = geo.diag_length(geo.mbr(target, output))
+    mbr_diag = geo.diag(geo.mbr(target, output))
     dist_center = geo.center_distance(target, output)
     loss = 1 - iou + dist_center / mbr_diag
     return torch.mean(loss)
@@ -30,7 +31,7 @@ def complete_iou_loss(output, target, ignore_zero=True):
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
-    mbr_diag = geo.diag_length(geo.mbr(target, output))
+    mbr_diag = geo.diag(geo.mbr(target, output))
     dist_center = geo.center_distance(target, output)
     t_asp = torch.arctan(geo.aspect_ratio(target))
     p_asp = torch.arctan(geo.aspect_ratio(output))
@@ -52,7 +53,7 @@ def tile_iou_loss(output, target, ignore_zero=True):
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
-    mbr_diag = geo.diag_length(geo.mbr(target, output))
+    mbr_diag = geo.diag(geo.mbr(target, output))
     dist_center = geo.center_distance(target, output)
     t_asp = torch.arctan(geo.aspect_ratio(target))
     p_asp = torch.arctan(geo.aspect_ratio(output))
