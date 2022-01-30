@@ -74,7 +74,7 @@ def tile_iou_loss(output, target, ignore_zero=True):
     return torch.mean(loss) + seq_loss
 
 
-def cls_loss(output, target, pad_idx=0, smoothing=0.1, weight=None):
+def cls_loss(output, target, pad_idx=0, smoothing=0.01, weight=None):
     return F.cross_entropy(output, target.to(torch.long),
         ignore_index=pad_idx, label_smoothing=smoothing, weight=weight)
 
@@ -93,7 +93,7 @@ def batch_mean(loss_func, outputs, targets, **kwargs):
 
 
 def structure_loss(outputs, targets,
-                   ignore_zero=True, pad_idx=0, smoothing=0.1, weight=None):
+                   ignore_zero=True, pad_idx=0, smoothing=0.01, weight=None):
     """ 如果输入box为(x,y,w,h)格式 则设置is_transform为True """
     # outputs tuple([batch_size, seq_len, dim], [batch_size, seq_len, 4])
     # targets tuple([batch_size, seq_len], [batch_size, seq_len, 4])
