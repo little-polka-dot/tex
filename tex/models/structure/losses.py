@@ -32,10 +32,10 @@ def complete_iou_loss(output, target, ignore_zero=True):
     iou = geo.iou(target, output)
     mbr_diag = geo.diag_length(geo.mbr(target, output))
     dist_center = geo.center_distance(target, output)
-    asp_tar = torch.arctan(geo.aspect_ratio(target))
-    asp_pre = torch.arctan(geo.aspect_ratio(output))
+    t_asp = torch.arctan(geo.aspect_ratio(target))
+    p_asp = torch.arctan(geo.aspect_ratio(output))
     value = torch.pow(
-        asp_tar - asp_pre, 2) * (4 / (torch.pi * torch.pi))
+        t_asp - p_asp, 2) * (4 / (torch.pi * torch.pi))
     alpha = value / ((1 - iou) + value)  # 完全重合时该值为nan
     loss = 1 - iou + dist_center / mbr_diag + alpha * value
     return torch.mean(loss)
@@ -54,10 +54,10 @@ def tile_iou_loss(output, target, ignore_zero=True):
     iou = geo.iou(target, output)
     mbr_diag = geo.diag_length(geo.mbr(target, output))
     dist_center = geo.center_distance(target, output)
-    asp_tar = torch.arctan(geo.aspect_ratio(target))
-    asp_pre = torch.arctan(geo.aspect_ratio(output))
+    t_asp = torch.arctan(geo.aspect_ratio(target))
+    p_asp = torch.arctan(geo.aspect_ratio(output))
     value = torch.pow(
-        asp_tar - asp_pre, 2) * (4 / (torch.pi * torch.pi))
+        t_asp - p_asp, 2) * (4 / (torch.pi * torch.pi))
     alpha = value / ((1 - iou) + value)
     loss = 1 - iou + dist_center / mbr_diag + alpha * value
     p_mbr, p_ssi = geo.mbr(output), geo.sum_si(output)
