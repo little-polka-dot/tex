@@ -4,7 +4,7 @@ import tex.core.geometry as geo
 
 
 def iou_loss(output, target, ignore_zero=True):
-    if ignore_zero:  # 不支持batch_size维度
+    if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
@@ -13,68 +13,70 @@ def iou_loss(output, target, ignore_zero=True):
 
 
 def distance_iou_loss(output, target, ignore_zero=True):
-    """ DIoU """
-    if ignore_zero:  # 不支持batch_size维度
+    """ DIoU 输入： [seq_len, 4] """
+    if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
     mbr_diag = geo.diag_length(geo.mbr(target, output))
-    d_center = geo.center_distance(target, output)
-    loss = 1 - iou + d_center / mbr_diag
+    dist_center = geo.center_distance(target, output)
+    loss = 1 - iou + dist_center / mbr_diag
     return torch.mean(loss)
 
 
 def complete_iou_loss(output, target, ignore_zero=True):
-    """ CIoU """
-    if ignore_zero:  # 不支持batch_size维度
+    """ CIoU 输入： [seq_len, 4] """
+    if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
     mbr_diag = geo.diag_length(geo.mbr(target, output))
-    d_center = geo.center_distance(target, output)
+    dist_center = geo.center_distance(target, output)
     asp_tar = torch.arctan(geo.aspect_ratio(target))
     asp_pre = torch.arctan(geo.aspect_ratio(output))
     value = torch.pow(
         asp_tar - asp_pre, 2) * (4 / (torch.pi * torch.pi))
     alpha = value / ((1 - iou) + value)  # 完全重合时该值为nan
-    loss = 1 - iou + d_center / mbr_diag + alpha * value
+    loss = 1 - iou + dist_center / mbr_diag + alpha * value
     return torch.mean(loss)
 
 
-def tile_penalty(box_a, box_b):
-    """
-    f = 矩形集合的重叠面积和 + 矩形集合最小外接矩形与矩形集合面积和的差值
-    return: | f(a) - f(b) |
-    """
-    # TODO: 计算过程中是否需要归一化?
-    a_mbr, a_ssi = geo.mbr(box_a), geo.ssi(box_a)
-    b_mbr, b_ssi = geo.mbr(box_b), geo.ssi(box_b)
-    a_tile = a_ssi + torch.abs(
-        geo.area(a_mbr) - torch.sum(geo.area(box_a)))
-    b_tile = b_ssi + torch.abs(
-        geo.area(b_mbr) - torch.sum(geo.area(box_b)))
-    return torch.abs(a_tile - b_tile)
-
-
 def tile_iou_loss(output, target, ignore_zero=True):
-    if ignore_zero:  # 不支持batch_size维度
+    """
+    输入： [seq_len, 4] 暂不支持batch_size维度
+    在CIoU基础上增加序列损失：
+      f = (重叠面积之和 + | 面积之和 - 最小外接矩形面积 |) / 最小外接矩形面积
+      Loss = 1 - iou(mbr(a)， mbr(b)) + | f(a) - f(b) |
+    """
+    if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
     iou = geo.iou(target, output)
     mbr_diag = geo.diag_length(geo.mbr(target, output))
-    d_center = geo.center_distance(target, output)
+    dist_center = geo.center_distance(target, output)
     asp_tar = torch.arctan(geo.aspect_ratio(target))
     asp_pre = torch.arctan(geo.aspect_ratio(output))
     value = torch.pow(
         asp_tar - asp_pre, 2) * (4 / (torch.pi * torch.pi))
-    alpha = value / ((1 - iou) + value)  # 完全重合时该值为nan
-    loss = 1 - iou + d_center / mbr_diag + alpha * value
-    return torch.mean(loss + tile_penalty(output, target))
+    alpha = value / ((1 - iou) + value)
+    loss = 1 - iou + dist_center / mbr_diag + alpha * value
+    p_mbr, p_ssi = geo.mbr(output), geo.sum_si(output)
+    t_mbr, t_ssi = geo.mbr(target), geo.sum_si(target)
+    p_dist = torch.abs(
+        1 - torch.sum(geo.area(output)) / geo.area(p_mbr))
+    t_dist = torch.abs(
+        1 - torch.sum(geo.area(target)) / geo.area(t_mbr))
+    p_tile = p_ssi / geo.area(p_mbr) + p_dist
+    t_tile = t_ssi / geo.area(t_mbr) + t_dist
+    seq_iou = geo.iou(
+        p_mbr.unsqueeze(0), t_mbr.unsqueeze(0)).squeeze(0)
+    seq_loss = 1 - seq_iou + torch.abs(p_tile - t_tile)
+    return torch.mean(loss) + seq_loss
 
 
 def cls_loss(output, target, pad_idx=0, smoothing=0.1, weight=None):
-    return F.cross_entropy(  # 内部会自动调用softmax
-        output, target.to(torch.long), ignore_index=pad_idx, label_smoothing=smoothing, weight=weight)
+    return F.cross_entropy(output, target.to(torch.long),
+        ignore_index=pad_idx, label_smoothing=smoothing, weight=weight)
 
 
 def batch_mean(loss_func, outputs, targets, **kwargs):
@@ -97,8 +99,8 @@ def structure_loss(outputs, targets,
     # targets tuple([batch_size, seq_len], [batch_size, seq_len, 4])
     cls_output, box_output = outputs
     cls_target, box_target = targets
-    cls_loss_value = batch_mean(
-        cls_loss, cls_output, cls_target, pad_idx=pad_idx, smoothing=smoothing, weight=weight)
+    cls_loss_value = batch_mean(cls_loss, cls_output, cls_target,
+        pad_idx=pad_idx, smoothing=smoothing, weight=weight)
     iou_loss_value = batch_mean(
         tile_iou_loss, box_output, box_target, ignore_zero=ignore_zero)
     return cls_loss_value, iou_loss_value

@@ -118,7 +118,7 @@ def iou(box_a, box_b):
     return torch.diagonal(jaccard(box_a, box_b), dim1=-1, dim2=-2)
 
 
-def ssi(box, contain_self=False):
+def sum_si(box, contain_self=False):
     """ 矩形集合与自身相交的面积总和 """
     return torch.sum(
         torch.triu(intersect(box, box), 0 if contain_self else 1))
@@ -140,4 +140,4 @@ if __name__ == '__main__':
     a = torch.tensor([[[90, 100, 100, 130], [100, 100, 100, 100], [40, 90, 100, 100]]], dtype=torch.float64)
     b = torch.tensor([[[100, 100, 125, 125], [100, 100, 125, 125], [100, 100, 100, 200]]], dtype=torch.float64)
 
-    print(mbr(a, b))
+    print(sum_si(a))
