@@ -8,7 +8,7 @@ def iou_loss(output, target, ignore_zero=True):
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = geo.iou(target, output)
+    iou = geo.iou(output, target)
     loss = 1 - iou  # -torch.log(iou) inf会导致模型无法拟合
     return torch.mean(loss)
 
@@ -18,9 +18,9 @@ def distance_iou_loss(output, target, ignore_zero=True):
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = geo.iou(target, output)
-    mbr_diag = geo.diag(geo.mbr(target, output))
-    dist_center = geo.center_distance(target, output)
+    iou = geo.iou(output, target)
+    mbr_diag = geo.diag(geo.mbr(output, target))
+    dist_center = geo.center_distance(output, target)
     loss = 1 - iou + dist_center / mbr_diag
     return torch.mean(loss)
 
@@ -30,49 +30,78 @@ def complete_iou_loss(output, target, ignore_zero=True):
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = geo.iou(target, output)
-    mbr_diag = geo.diag(geo.mbr(target, output))
-    dist_center = geo.center_distance(target, output)
+    iou = geo.iou(output, target)
+    mbr_diag = geo.diag(geo.mbr(output, target))
+    dist_center = geo.center_distance(output, target)
     t_asp = torch.arctan(geo.aspect_ratio(target))
     p_asp = torch.arctan(geo.aspect_ratio(output))
     value = torch.pow(
         t_asp - p_asp, 2) * (4 / (torch.pi * torch.pi))
-    alpha = value / ((1 - iou) + value)  # 完全重合时该值为nan
+    alpha = torch.div(value, ((1 - iou) + value))
     loss = 1 - iou + dist_center / mbr_diag + alpha * value
     return torch.mean(loss)
 
 
-def tile_iou_loss(output, target, ignore_zero=True):
-    """
-    输入： [seq_len, 4] 暂不支持batch_size维度
-    在CIoU基础上增加序列损失：
-      f = (重叠面积之和 + | 面积之和 - 最小外接矩形面积 |) / 最小外接矩形面积
-      Loss = 1 - iou(mbr(a)， mbr(b)) + | f(a) - f(b) |
-    """
+def score_complete_iou_loss(output, target, ignore_zero=True):
+    """ Score CIoU 输入： [seq_len, 4] """
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
-    iou = geo.iou(target, output)
-    mbr_diag = geo.diag(geo.mbr(target, output))
-    dist_center = geo.center_distance(target, output)
+    iou = geo.iou(output, target)
+    mbr_diag = geo.diag(geo.mbr(output, target))
+    dist_center = geo.center_distance(output, target)
     t_asp = torch.arctan(geo.aspect_ratio(target))
     p_asp = torch.arctan(geo.aspect_ratio(output))
     value = torch.pow(
         t_asp - p_asp, 2) * (4 / (torch.pi * torch.pi))
-    alpha = value / ((1 - iou) + value)
+    alpha = torch.div(value, ((1 - iou) + value))
     loss = 1 - iou + dist_center / mbr_diag + alpha * value
-    p_mbr, p_ssi = geo.mbr(output), geo.sum_si(output)
-    t_mbr, t_ssi = geo.mbr(target), geo.sum_si(target)
-    p_dist = torch.abs(
-        1 - torch.sum(geo.area(output)) / geo.area(p_mbr))
-    t_dist = torch.abs(
-        1 - torch.sum(geo.area(target)) / geo.area(t_mbr))
-    p_tile = p_ssi / geo.area(p_mbr) + p_dist
-    t_tile = t_ssi / geo.area(t_mbr) + t_dist
-    seq_iou = geo.iou(
-        p_mbr.unsqueeze(0), t_mbr.unsqueeze(0)).squeeze(0)
-    seq_loss = 1 - seq_iou + torch.abs(p_tile - t_tile)
-    return torch.mean(loss) + seq_loss
+    return torch.sum(torch.softmax(loss, -1) * loss)
+
+
+def tile_iou_loss(output, target, ignore_zero=True,
+                  precision_bn=1.1, progress_exp=10):
+    """
+    输入： [seq_len, 4] 暂不支持batch_size维度
+      f = (sum(intersect(X, X)) + | sum(X) - mbr(X) |) / mbr(X)
+      ...
+    增大progress_exp会延后模型训练中坐标修正产生作用的时机
+    减小precision_bn会增加坐标修正的精度 数值范围[1, inf)
+    """
+    if ignore_zero:
+        output = output[(target > 0).any(-1)]
+        target = target[(target > 0).any(-1)]
+
+    iou = geo.iou(output, target)
+    mbr_diag = geo.diag(geo.mbr(output, target))
+    dist_center = geo.center_distance(output, target)
+    t_asp = torch.arctan(geo.aspect_ratio(target))
+    p_asp = torch.arctan(geo.aspect_ratio(output))
+    value = torch.pow(
+        t_asp - p_asp, 2) * (4 / (torch.pi * torch.pi))
+    alpha = torch.div(value, ((1 - iou) + value))
+    loss = 1 - iou + dist_center / mbr_diag + alpha * value
+    loss = torch.sum(torch.softmax(loss, -1) * loss)
+
+    p_mbr, t_mbr = geo.mbr(output), geo.mbr(target)
+    p_tile = geo.sum_si(output) + torch.abs(
+        geo.area(p_mbr) - torch.sum(geo.area(output)))
+    t_tile = geo.sum_si(target) + torch.abs(
+        geo.area(t_mbr) - torch.sum(geo.area(target)))
+    tile_value = torch.abs(
+        p_tile / geo.area(p_mbr) - t_tile / geo.area(t_mbr))
+    # tile_value = torch.div(1, tile_value)  # (0, inf]
+    tile_value = torch.pow(
+        precision_bn, torch.div(-1, tile_value))
+    tile_value = torch.div(
+        1 - tile_value, 1 + tile_value)  # (0, 1]
+
+    iou_pr = torch.sum(torch.softmax(-iou, -1) * iou)
+    iou_pr = torch.pow(iou_pr, progress_exp)  # 修正比率
+
+    # print(iou_pr.item(), tile_value.item())
+
+    return loss + 1 - iou_pr * tile_value
 
 
 def cls_loss(output, target, pad_idx=0, smoothing=0.01, weight=None):
@@ -115,15 +144,14 @@ if __name__ == '__main__':
                   -0.4668, -1.3706],
                  [1.2456, -0.5448, -0.5127, -0.3453, 0.6549, -0.1191, -0.4428,
                   -0.4353, -0.4258]]]),
-        torch.tensor([[[0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1], [0.1, 0.1, 0.1, 0.1]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.1, 0.101], [0.1, 0.2, 0.1, 0.099], [0.1, 0.3, 0.1, 0.11]]], dtype=torch.float64)
+        # torch.tensor([[[0.1, 0.1, 0.1, 0.3], [0.1, 0.1, 0.1, 0], [0.1, 0.1, 0.1, 0]]], dtype=torch.float64)
     )
     print(a[0].argmax(-1))
     b = (
         torch.tensor([[7, 4, 0]]),
-        torch.tensor([[[0.1, 0.1, 0.125, 0.2], [0.1, 0.1, 0.125, 0.2], [0.1, 0.1, 0.125, 0.2]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.1, 0.1], [0.1, 0.2, 0.1, 0.1], [0.1, 0.3, 0.1, 0.1]]], dtype=torch.float64)
     )
-
-    print(iou_loss(a[1], b[1]))
-    print(distance_iou_loss(a[1], b[1]))
     print(complete_iou_loss(a[1], b[1]))
+    print(score_complete_iou_loss(a[1], b[1]))
     print(tile_iou_loss(a[1], b[1]))

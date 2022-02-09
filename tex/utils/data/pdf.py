@@ -71,6 +71,12 @@ class Loader(object):
             if self.in_clip(*text[:4], clip):
                 yield text[:5] if return_text else text[:4]
 
+    def to(self, name, page=0):
+        """
+        name: html | json | rawjson | dict | rawdict | xml | xhtml
+        """
+        return self._document[page].get_text(name)
+
     def width(self, page=0):
         return self._document[page].rect.width
 
@@ -95,6 +101,7 @@ class Loader(object):
 
 
 if __name__ == '__main__':
-    with Loader('E:/Code/Mine/github/tex/test/pdf/89df2a78460636a6fa35edb53ade119b.pdf') as l:
+    with Loader('E:/Code/Mine/github/tex/test/pdf/89df2a78460636a6fa35edb53ade119b/89df2a78460636a6fa35edb53ade119b.pdf') as l:
         # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
-        l.screenshot(page=5)
+        with open('test.html', 'w', encoding='utf-8') as f:
+            f.write(l.to('html', page=5))
