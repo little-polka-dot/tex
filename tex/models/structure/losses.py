@@ -59,14 +59,12 @@ def score_complete_iou_loss(output, target, ignore_zero=True):
     return torch.sum(torch.softmax(loss, -1) * loss)
 
 
-def tile_iou_loss(output, target, ignore_zero=True,
-                  precision_bn=1.1, progress_exp=10):
+def tile_iou_loss(output, target, ignore_zero=True, progress_exp=10):
     """
     输入： [seq_len, 4] 暂不支持batch_size维度
       f = (sum(intersect(X, X)) + | sum(X) - mbr(X) |) / mbr(X)
       ...
     增大progress_exp会延后模型训练中坐标修正产生作用的时机
-    减小precision_bn会增加坐标修正的精度 数值范围[1, inf)
     """
     if ignore_zero:
         output = output[(target > 0).any(-1)]
@@ -90,11 +88,13 @@ def tile_iou_loss(output, target, ignore_zero=True,
         geo.area(t_mbr) - torch.sum(geo.area(target)))
     tile_value = torch.abs(
         p_tile / geo.area(p_mbr) - t_tile / geo.area(t_mbr))
-    # tile_value = torch.div(1, tile_value)  # (0, inf]
-    tile_value = torch.pow(
-        precision_bn, torch.div(-1, tile_value))
-    tile_value = torch.div(
-        1 - tile_value, 1 + tile_value)  # (0, 1]
+
+    tile_value = 1 - 2 * torch.arctan(tile_value) / torch.pi
+
+    # tile_value = torch.pow(
+    #     precision_bn, torch.div(-1, tile_value))
+    # tile_value = torch.div(
+    #     1 - tile_value, 1 + tile_value)  # (0, 1]
 
     iou_pr = torch.sum(torch.softmax(-iou, -1) * iou)
     iou_pr = torch.pow(iou_pr, progress_exp)  # 修正比率
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                   -0.4668, -1.3706],
                  [1.2456, -0.5448, -0.5127, -0.3453, 0.6549, -0.1191, -0.4428,
                   -0.4353, -0.4258]]]),
-        torch.tensor([[[0.1, 0.1, 0.1, 0.101], [0.1, 0.2, 0.1, 0.099], [0.1, 0.3, 0.1, 0.11]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.1, 0.2], [0.1, 0.2, 0.1, 0.11], [0.1, 0.3, 0.1, 0.11]]], dtype=torch.float64)
         # torch.tensor([[[0.1, 0.1, 0.1, 0.3], [0.1, 0.1, 0.1, 0], [0.1, 0.1, 0.1, 0]]], dtype=torch.float64)
     )
     print(a[0].argmax(-1))
