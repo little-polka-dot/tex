@@ -4,6 +4,7 @@ from tex.datasets.labels import StructLang
 import random
 import numpy as np
 import cv2
+import math
 
 
 class ConStructureTransform(object):
@@ -180,27 +181,147 @@ class PosStructureTransform(object):
         return (x_data, seq_inputs), (seq_labels, seq_positions)
 
 
+class ResStructureTransform(object):
+
+    label_alignment = (StructLang.Vocab.CELL.value, StructLang.Vocab.HEAD.value)
+
+    def __init__(self, enc_len, dec_len):
+        self._enc_len = enc_len
+        self._dec_len = dec_len
+
+    def rectangle_mask(self, original, rect, blur=False):
+        x_min = int(rect[0] * self._enc_len)
+        x_len = int(rect[2] * self._enc_len)
+        x_max = x_min + x_len
+        y_min = int(rect[1] * self._enc_len)
+        y_len = int(rect[3] * self._enc_len)
+        y_max = y_min + y_len
+        if blur:
+            def key(p): return math.cos(math.pi * p / 2)
+            x_center = (x_min + x_max) / 2
+            y_center = (y_min + y_max) / 2
+            for x in range(x_min, x_max + 1):
+                for y in range(y_min, y_max + 1):
+                    x_v = key(2 * abs(x - x_center) / x_len)
+                    y_v = key(2 * abs(y - y_center) / y_len)
+                    original[x, y] = (x_v + y_v) / 2
+        else:
+            original[x_min: x_max + 1, y_min: y_max + 1] = 1
+        return original
+
+    def __call__(self, x_data, y_data):  # 坐标格式必须为x-y-w-h
+
+        # x_data [enc_len, 4], [enc_len, 4] y_data description-object, [dec_len, 4]
+
+        line_data, text_data = map(lambda i: np.unique(np.array(i), axis=0), x_data)
+
+        y_description, y_position = StructLang.from_object(y_data[0]), np.array(y_data[1])
+
+        # 表结构描述的具有边界的单元格数一定与边界集合数目相同
+        assert y_position.shape[0] == len(
+            [i for i in sum(y_description.data, []) if i.value in self.label_alignment])
+
+        # 计算线条与文本框集合的最小外接矩形
+        # 有线的情况下线的最小外接矩形作为边界 否则单元格最小外接矩形会作为边界
+        boundary_x = min(line_data[:, 0].min(), text_data[:, 0].min(), y_position[:, 0].min())
+        boundary_y = min(line_data[:, 1].min(), text_data[:, 1].min(), y_position[:, 1].min())
+        boundary_x_max = max((line_data[:, 0] + line_data[:, 2]).max(),
+            (text_data[:, 0] + text_data[:, 2]).max(), (y_position[:, 0] + y_position[:, 2]).max())
+        boundary_y_max = max((line_data[:, 1] + line_data[:, 3]).max(),
+            (text_data[:, 1] + text_data[:, 3]).max(), (y_position[:, 1] + y_position[:, 3]).max())
+        boundary_w = boundary_x_max - boundary_x
+        boundary_h = boundary_y_max - boundary_y
+
+        # decoder输入与输出中的表结构描述 输入比输出多一个开始占位符
+        seq_labels = np.array(y_description.labels(self._dec_len, False, True))
+        seq_inputs = np.array(y_description.labels(self._dec_len,  True, True))
+
+        # 坐标归一化 是否可以认为归一化可以去除掉尺度以及绝对坐标的信息？
+        normalize_size = max(boundary_w, boundary_h)
+        normalize_fill = abs(boundary_w - boundary_h) / 2
+        if boundary_w > boundary_h:
+            line_data = np.array([
+                [
+                    (i[0] - boundary_x) / normalize_size,  # x / W
+                    (i[1] - boundary_y + normalize_fill) / normalize_size,  # y / H
+                    i[2] / normalize_size,  # w / W
+                    i[3] / normalize_size,  # h / H
+                ] for i in line_data
+            ])
+            text_data = np.array([
+                [
+                    (i[0] - boundary_x) / normalize_size,  # x / W
+                    (i[1] - boundary_y + normalize_fill) / normalize_size,  # y / H
+                    i[2] / normalize_size,  # w / W
+                    i[3] / normalize_size,  # h / H
+                ] for i in text_data
+            ])
+            seq_positions = np.array([
+                [
+                    (i[0] - boundary_x) / normalize_size,  # x / W
+                    (i[1] - boundary_y + normalize_fill) / normalize_size,  # y / H
+                    i[2] / normalize_size,  # w / W
+                    i[3] / normalize_size,  # h / H
+                ] for i in y_position
+            ])
+        else:
+            line_data = np.array([
+                [
+                    (i[0] - boundary_x + normalize_fill) / normalize_size,  # x / W
+                    (i[1] - boundary_y) / normalize_size,  # y / H
+                    i[2] / normalize_size,  # w / W
+                    i[3] / normalize_size,  # h / H
+                ] for i in line_data
+            ])
+            text_data = np.array([
+                [
+                    (i[0] - boundary_x + normalize_fill) / normalize_size,  # x / W
+                    (i[1] - boundary_y) / normalize_size,  # y / H
+                    i[2] / normalize_size,  # w / W
+                    i[3] / normalize_size,  # h / H
+                ] for i in text_data
+            ])
+            seq_positions = np.array([
+                [
+                    (i[0] - boundary_x + normalize_fill) / normalize_size,  # x / W
+                    (i[1] - boundary_y) / normalize_size,  # y / H
+                    i[2] / normalize_size,  # w / W
+                    i[3] / normalize_size,  # h / H
+                ] for i in y_position
+            ])
+
+        # 线条与文本框坐标信息集合转为位图
+        x_data = np.zeros((2, self._enc_len, self._enc_len))  # [channel, x, y]
+        for rect in line_data: x_data[0] = self.rectangle_mask(x_data[0], rect)
+        for rect in text_data: x_data[1] = self.rectangle_mask(x_data[1], rect, True)
+
+        # 对齐单元格坐标信息与表结构描述 对seq_positions按照y-x排序 然后根据seq_labels填充(0,0,0,0)
+        seq_positions = seq_positions[np.lexsort((seq_positions[:, 0], seq_positions[:, 1])), :]
+        for label_index, label in enumerate(seq_labels):
+            # 仅有cell与head两个类型的单元格有坐标描述信息
+            if label not in self.label_alignment:
+                seq_positions = np.insert(
+                    seq_positions, label_index, values=np.array([0, 0, 0, 0]), axis=0)
+
+        # 确认序列长度是否一致
+        assert seq_inputs.shape[0] == seq_labels.shape[0] == seq_positions.shape[0] == self._dec_len
+
+        return (x_data, seq_inputs), (seq_labels, seq_positions)
+
+
 if __name__ == '__main__':
-    transform = PosStructureTransform(1024, 512)
+    transform = ResStructureTransform(224, 512)
     with open(r'E:\Code\Mine\github\tex\test\pdf\data.json', 'r', encoding='utf-8') as jf:
         import json
         data = json.load(jf)
-        for item in data[113:]:
+        for item in data:
             print(item['DESC'])
             x = item['X']
             y = item['Y']['description'], item['Y']['position']
             x_, y_ = transform(x, y)
             b = 800
-            g_1 = np.zeros((b, b))
-            # print('线条与文本框')
-            for i in x_[0]:  # 线条与文本框
-                i = [int(r*b) for r in i]
-                # print(i)
-                g_1[i[1]:i[1] + i[3]+1, i[0]:i[0] + i[2]+1] = 255
-                if i[0] > 0 or i[1] > 0 or i[2] > 0 or i[3] > 0:
-                    cv2.imshow('1', g_1)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
+            g_0 = x_[0][0].T
+            g_1 = x_[0][1].T
             g_2 = np.zeros((b, b))
             # print('单元格')
             for idx, i in enumerate(y_[1]):  # 单元格
@@ -209,13 +330,15 @@ if __name__ == '__main__':
                 # print(m[y_[0][idx]], i)
                 g_2 = cv2.rectangle(
                     g_2, (i[0], i[1]), (i[0] + i[2], i[1] + i[3]), 1)
-                if i[0] > 0 or i[1] > 0 or i[2] > 0 or i[3] > 0:
-                    cv2.imshow('2', g_2)
-                    print(i)
-                    cv2.waitKey(0)
-                    cv2.destroyAllWindows()
+                # if i[0] > 0 or i[1] > 0 or i[2] > 0 or i[3] > 0:
+                #     cv2.imshow('2', g_2)
+                #     print(i)
+                #     cv2.waitKey(0)
+                #     cv2.destroyAllWindows()
+            cv2.imshow('0', g_0)
             cv2.imshow('1', g_1)
             cv2.imshow('2', g_2)
+            cv2.imwrite('mask.png', cv2.max(g_0, g_1)*255)
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 

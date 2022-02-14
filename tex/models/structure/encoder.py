@@ -76,9 +76,13 @@ class ResEncoder(nn.Module):
         return torch.cat(smt, -1).transpose(-1, -2)
 
 
+def ResEncoder50(d_input, d_model):
+    return ResEncoder(d_input, d_model, 'BottleNeck', [3, 4, 6, 3], [64, 128, 256, 512])
+
+
 class PosEncoder(nn.Module):
 
-    def __init__(self, d_input, d_model, n_head, d_k, layers, dropout=0.1, d_ffn=None):
+    def __init__(self, d_input, d_model, n_head, d_k, d_ffn, layers, dropout=0.1):
         super(PosEncoder, self).__init__()
         self.pos_mapping = nn.Sequential(
             nn.Linear(d_input, d_model, bias=False),
@@ -86,7 +90,7 @@ class PosEncoder(nn.Module):
         )  # 该模型不具有平移不变性与尺度不变性
         self.encoders = nn.ModuleList([
             attention.EncodeLayer(
-                d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
+                d_model, n_head, d_k, d_ffn, dropout=dropout) for _ in range(layers)
         ])
 
     def forward(self, x, mask=None):
@@ -106,7 +110,7 @@ class PosEncoder(nn.Module):
 
 if __name__ == '__main__':
     i = torch.randn((10, 2, 224, 224))
-    m = ResEncoder(2, 64, 'BottleNeck', [2, 2, 6, 2], [32, 64, 128, 256])
+    m = ResEncoder50(2, 64)
     i = m(i)
     print(i.size())
 

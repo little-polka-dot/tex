@@ -20,7 +20,7 @@ class Block(nn.Module):
             )
 
     def forward(self, x):
-        r = x  # id(r) == id(x)
+        r = x  # residual
         if callable(self.downsample):
             r = self.downsample(r)
         x = self.net(x)

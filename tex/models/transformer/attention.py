@@ -77,12 +77,11 @@ class AddAndNorm(nn.Module):
 
 class EncodeLayer(nn.Module):
 
-    def __init__(self, d_model, n_head, d_k, d_v=None, d_ffn=None, dropout=0.1):
+    def __init__(self, d_model, n_head, d_k, d_ffn, d_v=None, dropout=0.1):
         super(EncodeLayer, self).__init__()
         self.slf_atn = MultiHeadAttention(
             d_model, n_head, d_k, d_k if d_v is None else d_v, dropout=dropout)
-        self.fin_ffn = FeedForward(
-            d_model, d_model if d_ffn is None else d_ffn, dropout=dropout)
+        self.fin_ffn = FeedForward(d_model, d_ffn, dropout=dropout)
         self.res_slf = AddAndNorm(d_model)
         self.res_ffn = AddAndNorm(d_model)
 
@@ -94,14 +93,13 @@ class EncodeLayer(nn.Module):
 
 class DecodeLayer(nn.Module):
 
-    def __init__(self, d_model, n_head, d_k, d_v=None, d_ffn=None, dropout=0.1):
+    def __init__(self, d_model, n_head, d_k, d_ffn, d_v=None, dropout=0.1):
         super(DecodeLayer, self).__init__()
         self.slf_atn = MultiHeadAttention(
             d_model, n_head, d_k, d_k if d_v is None else d_v, dropout=dropout)
         self.enc_atn = MultiHeadAttention(
             d_model, n_head, d_k, d_k if d_v is None else d_v, dropout=dropout)
-        self.fin_ffn = FeedForward(
-            d_model, d_model if d_ffn is None else d_ffn, dropout=dropout)
+        self.fin_ffn = FeedForward(d_model, d_ffn, dropout=dropout)
         self.res_slf = AddAndNorm(d_model)
         self.res_enc = AddAndNorm(d_model)
         self.res_ffn = AddAndNorm(d_model)

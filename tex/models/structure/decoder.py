@@ -5,8 +5,8 @@ from tex.models.transformer import attention
 
 class Decoder(nn.Module):
 
-    def __init__(self, n_vocab, seq_len, d_model, n_head, d_k, layers,
-                 pad_idx=0, dropout=0.1, d_ffn=None, n_position=256):
+    def __init__(self, n_vocab, seq_len, d_model, n_head, d_k, d_ffn, layers,
+                 pad_idx=0, dropout=0.1, n_position=256):
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(n_vocab, d_model, padding_idx=pad_idx)
         self.dropout = nn.Dropout(dropout)
@@ -14,7 +14,7 @@ class Decoder(nn.Module):
         self.norm = nn.LayerNorm(d_model)
         self.decoders = nn.ModuleList([
             attention.DecodeLayer(
-                d_model, n_head, d_k, d_ffn=d_ffn, dropout=dropout) for _ in range(layers)
+                d_model, n_head, d_k, d_ffn, dropout=dropout) for _ in range(layers)
         ])
         # self.con_fc = nn.Linear(d_model, 1)  # 置信度
         self.cls_fc = nn.Linear(d_model, n_vocab, bias=False)
