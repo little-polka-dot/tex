@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from typing import Union
 from tex.models.transformer import attention
 from tex.models.backbone import resnet
-from tex.models import gcnet
+from tex.models.backbone import gcnet
 
 
 class ResEncoder(nn.Module):
@@ -47,11 +47,11 @@ class ResEncoder(nn.Module):
                             d_layers[index] * block.expansion, d_layers[index] * block.expansion)
                     )
                 )
+                self.smt_layers.append(
+                    nn.Conv2d(d_model, d_model, (3, 3), stride=(1, 1), padding=(1, 1))
+                )
             self.fpn_layers.append(
                 nn.Conv2d(d_layers[index] * block.expansion, d_model, (1, 1))
-            )
-            self.smt_layers.append(
-                nn.Conv2d(d_model, d_model, (3, 3), stride=(1, 1), padding=(1, 1))
             )
 
     def forward(self, x):
@@ -69,8 +69,8 @@ class ResEncoder(nn.Module):
                 lat.append(t + o)
             else:
                 lat.append(o)
-        smt = []  # [p5, p4, p3, p2]
-        for index, layer in enumerate(self.smt_layers):
+        smt = [lat[0]]  # [p5, p4, p3, p2]
+        for index, layer in enumerate(self.smt_layers, start=1):
             smt.append(layer(lat[index]))
         smt = [o.view(o.size(0), o.size(1), -1) for o in smt]
         return torch.cat(smt, -1).transpose(-1, -2)
@@ -105,10 +105,10 @@ class PosEncoder(nn.Module):
 
 
 if __name__ == '__main__':
-    x = torch.randn((10, 2, 224, 224))
-    m = ResEncoder(2, 11, 'BottleNeck', [1, 1, 3, 1], [64, 128, 256, 512])
-    x = m(x)
-    print(x.size())
+    i = torch.randn((10, 2, 224, 224))
+    m = ResEncoder(2, 64, 'BottleNeck', [2, 2, 6, 2], [32, 64, 128, 256])
+    i = m(i)
+    print(i.size())
 
     # import numpy as np
     # x = torch.tensor(np.array(range(1,10)).reshape((1,1,3,3)), dtype=torch.double)
