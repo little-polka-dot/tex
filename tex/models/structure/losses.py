@@ -43,7 +43,7 @@ def complete_iou_loss(output, target, ignore_zero=True):
 
 
 def score_complete_iou_loss(output, target, ignore_zero=True):
-    """ Score CIoU 输入： [seq_len, 4] """
+    """ SCIoU 输入： [seq_len, 4] """
     if ignore_zero:
         output = output[(target > 0).any(-1)]
         target = target[(target > 0).any(-1)]
@@ -59,9 +59,9 @@ def score_complete_iou_loss(output, target, ignore_zero=True):
     return torch.sum(torch.softmax(loss, -1) * loss)
 
 
-def tile_iou_loss(output, target, ignore_zero=True, progress_exp=10):
+def tile_complete_iou_loss(output, target, ignore_zero=True, progress_exp=10):
     """
-    输入： [seq_len, 4] 暂不支持batch_size维度
+    TCIoU 输入： [seq_len, 4] 暂不支持batch_size维度
       f = (sum(intersect(X, X)) + | sum(X) - mbr(X) |) / mbr(X)
       ...
     增大progress_exp会延后模型训练中坐标修正产生作用的时机
@@ -132,7 +132,7 @@ def structure_loss(outputs, targets,
     cls_loss_value = batch_mean(cls_loss, cls_output, cls_target,
         pad_idx=pad_idx, smoothing=smoothing, weight=weight)
     iou_loss_value = batch_mean(
-        tile_iou_loss, box_output, box_target, ignore_zero=ignore_zero)
+        tile_complete_iou_loss, box_output, box_target, ignore_zero=ignore_zero)
     return cls_loss_value, iou_loss_value
 
 
@@ -144,7 +144,7 @@ if __name__ == '__main__':
                   -0.4668, -1.3706],
                  [1.2456, -0.5448, -0.5127, -0.3453, 0.6549, -0.1191, -0.4428,
                   -0.4353, -0.4258]]]),
-        torch.tensor([[[0.1, 0.1, 0.1, 0.2], [0.1, 0.2, 0.1, 0.11], [0.1, 0.3, 0.1, 0.11]]], dtype=torch.float64)
+        torch.tensor([[[0.1, 0.1, 0.1, 0.101], [0.1, 0.2, 0.1, 0.101], [0.1, 0.3, 0.1, 0.]]], dtype=torch.float64)
         # torch.tensor([[[0.1, 0.1, 0.1, 0.3], [0.1, 0.1, 0.1, 0], [0.1, 0.1, 0.1, 0]]], dtype=torch.float64)
     )
     print(a[0].argmax(-1))
@@ -154,4 +154,4 @@ if __name__ == '__main__':
     )
     print(complete_iou_loss(a[1], b[1]))
     print(score_complete_iou_loss(a[1], b[1]))
-    print(tile_iou_loss(a[1], b[1]))
+    print(tile_complete_iou_loss(a[1], b[1]))

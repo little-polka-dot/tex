@@ -55,12 +55,6 @@ class Decoder(nn.Module):
                 dec_input, enc_value, enc_mask=enc_mask)
 
 
-DisDecoder = Decoder
-
-
-class GenDecoder(nn.Module): pass
-
-
 # if __name__ == '__main__':
 #     x = torch.randn((3,2))
 #     print(x)
