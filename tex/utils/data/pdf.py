@@ -35,15 +35,16 @@ class Loader(object):
         return clip is None or (
                 x0 >= clip[0] and y0 >= clip[1] and x1 <= clip[2] and y1 <= clip[3])
 
-    def lines(self, page=0, film_mode=False, color_threshold=0.1,
+    def lines(self, page=0, film_mode=False, color_threshold=None,
               line_max_width=1, clip=None, filter_point=False):
         """ 尝试获取文档中所有线条(横竖两个方向)并返回其x0,y0,x1,y1坐标 """
 
-        assert 0 <= color_threshold <= 1  # 颜色阈值条件在0到1之间
+        assert color_threshold is None or 0 <= color_threshold <= 1
 
         def in_color(color):  # 是否满足颜色要求
-            return (min(color) >= color_threshold) \
-                if film_mode else (max(color) <= color_threshold)
+            return color is not None and (color_threshold is None or
+                ((max(color) >= color_threshold)
+                    if film_mode else (min(color) <= color_threshold)))
 
         def is_line(width, length):  # 是否满足线条要求
             return (0 < width <= line_max_width < length) \
@@ -53,13 +54,25 @@ class Loader(object):
             for item in path['items']:
                 if item[0] == 're':  # 矩形填充为线条
                     x0, y0, x1, y1 = item[1]
-                    if self.in_clip(x0, y0, x1, y1, clip) \
-                            and in_color(path['fill']) \
-                            and is_line(min(x1 - x0, y1 - y0), max(x1 - x0, y1 - y0)):
-                        yield x0, y0, x1, y1
+                    assert x0 <= x1 and y0 <= y1
+                    if self.in_clip(x0, y0, x1, y1, clip):
+                        if is_line(min(x1 - x0, y1 - y0), max(x1 - x0, y1 - y0)):
+                            if in_color(path['color']) or in_color(path['fill']):
+                                yield x0, y0, x1, y1
+                        else:
+                            if in_color(path['color']) or \
+                                    path['color'] is None and path['fill']:
+                                # 具有填充颜色的矩形区域的四条边也作为有效的表格线条
+                                # TODO 边框颜色不满足条件时填充颜色也需要条件筛选
+                                yield x0, y0, x0 + path['width'], y1
+                                yield x0, y0, x1, y0 + path['width']
+                                yield x0, y1, x1, y1 + path['width']
+                                yield x1, y0, x1 + path['width'], y1
                 if item[0] == 'l':  # 直线
                     (x0, y0), (x1, y1) = item[1], item[2]
                     if x0 == x1 or y0 == y1:  # 过滤出横竖线
+                        if x0 > x1 or y0 > y1:  # 上下或左右顶点重新排序
+                            x0, y0, x1, y1 = x1, y1, x0, y0
                         if self.in_clip(x0, y0, x1, y1, clip) \
                                 and in_color(path['color']) \
                                 and is_line(path['width'], (x1 - x0) + (y1 - y0)):
@@ -101,8 +114,11 @@ class Loader(object):
 
 
 if __name__ == '__main__':
-    with Loader(r'E:\Code\Mine\github\tex\test\pdf\89df2a78460636a6fa35edb53ade119b\89df2a78460636a6fa35edb53ade119b.pdf') as l:
+    with Loader(r'F:\PDF\圆通速递：圆通速递股份有限公司2020年年度报告.pdf') as l:
         # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
-        list_ = list(l.texts(14, return_text=True))
-        with open('test.html', 'w', encoding='utf-8') as f:
-            f.write(l.to('html', page=14))
+
+        a1 = l.lines(4, line_max_width=5)
+        a2 = l.texts(4)
+        cv2.imshow('', l.page_mask(4, a1))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

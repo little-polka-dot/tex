@@ -204,7 +204,7 @@ class ResStructureTransform(object):
                 for y in range(y_min, y_max + 1):
                     x_v = mask(2 * abs(x - x_center) / x_len)
                     y_v = mask(2 * abs(y - y_center) / y_len)
-                    original[x, y] = (x_v + y_v) / 2
+                    original[x, y] = min(x_v, y_v)
         else:
             original[x_min: x_max + 1, y_min: y_max + 1] = 1
         return original
