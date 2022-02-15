@@ -197,13 +197,13 @@ class ResStructureTransform(object):
         y_len = int(rect[3] * self._enc_len)
         y_max = y_min + y_len
         if blur:
-            def key(p): return math.cos(math.pi * p / 2)
+            def mask(p): return math.cos(math.pi * p / 2)
             x_center = (x_min + x_max) / 2
             y_center = (y_min + y_max) / 2
             for x in range(x_min, x_max + 1):
                 for y in range(y_min, y_max + 1):
-                    x_v = key(2 * abs(x - x_center) / x_len)
-                    y_v = key(2 * abs(y - y_center) / y_len)
+                    x_v = mask(2 * abs(x - x_center) / x_len)
+                    y_v = mask(2 * abs(y - y_center) / y_len)
                     original[x, y] = (x_v + y_v) / 2
         else:
             original[x_min: x_max + 1, y_min: y_max + 1] = 1
@@ -337,8 +337,8 @@ if __name__ == '__main__':
                 #     cv2.destroyAllWindows()
             cv2.imshow('0', g_0)
             cv2.imshow('1', g_1)
-            cv2.imshow('2', g_2)
-            cv2.imwrite('mask.png', cv2.max(g_0, g_1)*255)
+            # cv2.imshow('2', g_2)
+            cv2.imshow('mask.png', cv2.max(g_0, g_1))
             cv2.waitKey(0)
             cv2.destroyAllWindows()
 
