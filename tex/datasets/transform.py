@@ -319,7 +319,8 @@ if __name__ == '__main__':
             x = item['X']
             y = item['Y']['description'], item['Y']['position']
             x_, y_ = transform(x, y)
-            b = 800
+            print([i for i in y_[0] if i])
+            b = 500
             g_0 = x_[0][0].T
             g_1 = x_[0][1].T
             g_2 = np.zeros((b, b))
@@ -337,9 +338,10 @@ if __name__ == '__main__':
                 #     cv2.destroyAllWindows()
             cv2.imshow('0', g_0)
             cv2.imshow('1', g_1)
-            # cv2.imshow('2', g_2)
+            cv2.imshow('2', g_2)
             cv2.imshow('mask.png', cv2.max(g_0, g_1))
             cv2.waitKey(0)
             cv2.destroyAllWindows()
+
 
 

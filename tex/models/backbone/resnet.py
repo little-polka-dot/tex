@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from tex.utils.functional import any_gt
-from typing import Type
+from typing import Type, Union
 
 
 class Block(nn.Module):
@@ -60,8 +60,9 @@ class BottleNeck(Block):
         )
 
 
-def make_layer(layers: int, block: Type[Block],
+def make_layer(layers: int, block: Union[str, Type[Block]],
                in_planes, planes, stride=(1, 1), sub=None):
+    if isinstance(block, str): block = globals()[block]
     return nn.Sequential(
         block(in_planes, planes, stride=stride, sub=sub),
         *[

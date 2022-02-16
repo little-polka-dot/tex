@@ -9,12 +9,12 @@ class ResStructure(nn.Module):
 
         super(ResStructure, self).__init__()
 
-        from tex.models.structure.encoder import ResEncoder50 as Encoder
+        from tex.models.structure.encoder import ResEncoder as Encoder
         from tex.models.structure.decoder import Decoder
         from tex.models.transformer.attention import PositionalEncoding
 
         self.enc_net = nn.Sequential(
-            Encoder(d_input=d_input, d_model=d_model),
+            Encoder(d_input=d_input, layers=(2, 3, 5, 3)),
             PositionalEncoding(d_model, enc_n_pos),
         )
 

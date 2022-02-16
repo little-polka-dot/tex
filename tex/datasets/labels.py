@@ -1,14 +1,14 @@
 import json
-from typing import Tuple, Any, Callable, Iterable, Union, List
+from typing import Tuple, Any, Callable, Iterable
 from enum import Enum, unique
 from io import StringIO
+import numpy as np
 
 
 class StructLang(object):
     """
     自定义的表格描述标签语言
     """
-
     @unique
     class Placeholder(Enum):
         PAD = 0
@@ -18,11 +18,11 @@ class StructLang(object):
 
     @unique
     class Vocab(Enum):
-        CELL = 4
-        HEAD = 5
-        TAIL_H = 6
-        TAIL_V = 7
-        TAIL_T = 8
+        CELL = 0
+        HEAD = 1
+        TAIL_H = 2
+        TAIL_V = 3
+        TAIL_T = 4
 
     def __init__(self, rows: int = 0, cols: int = 0, auto_init: bool = True):
         self._rows = rows
@@ -40,8 +40,8 @@ class StructLang(object):
         return json.dumps(self.to_object(), **kwargs)
 
     @classmethod
-    def from_json(cls, s):
-        return cls.from_object(json.loads(s))
+    def from_json(cls, json_str):
+        return cls.from_object(json.loads(json_str))
 
     def to_object(self):
         return {
@@ -55,6 +55,17 @@ class StructLang(object):
         new_struct = cls(obj_params['rows'], obj_params['cols'], False)
         new_struct._data = [[
             getattr(cls.Vocab, i) for i in r] for r in obj_params['data']]
+        return new_struct
+
+    def to_numpy(self):
+        return np.array([[i.name for i in r] for r in self._data])
+
+    @classmethod
+    def from_numpy(cls, array: np.ndarray):
+        rows, cols = array.shape
+        new_struct = cls(rows, cols, False)
+        new_struct._data = [[
+            getattr(cls.Vocab, i.item()) for i in r] for r in array]
         return new_struct
 
     @property
@@ -129,15 +140,10 @@ class StructLang(object):
             self._data[pos[0]][col] = self.Vocab.CELL
         self._data[pos[0]][pos[1]] = self.Vocab.CELL
 
-    def row(self, idx=0):
-        for col in range(self._cols): yield self._data[idx][col]
-
-    def col(self, idx=0):
-        for row in range(self._rows): yield self._data[row][idx]
-
     def labels(self, seq_len=0, use_sos=False, use_eos=False, cut_len=0):
-        lab = [i.value for i in sum([
-            [self.Placeholder.ENTER, *self.row(i)] for i in range(self._rows)], [])]
+        lab = sum([[self.Placeholder.ENTER.value, *[
+            len(self.Placeholder) + self._data[row][col].value for col in range(
+                self._cols)]] for row in range(self._rows)], [])
         if use_sos: lab = [self.Placeholder.SOS.value, *lab]
         if use_eos: lab = [*lab, self.Placeholder.EOS.value]
         if 0 < cut_len < len(lab): lab = lab[:cut_len]
@@ -300,10 +306,9 @@ if __name__ == '__main__':
     print(st.diff(t, lambda a, b: 'SAME', lambda a, b: f'{a}:{b}'), '\n')
     print(st == t, '\n')
 
+    print(st.labels(20, True, True))
     print(st.labels(20, True, False))
-    print(st.labels(20, True, False, 15))
     print(st.labels(20, False, True))
-    print(st.labels(20, False, True, 15))
 
     s = StructLang(6, 6)
     s.merge_cell((0, 1), (0, 5))

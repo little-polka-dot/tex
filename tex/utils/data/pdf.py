@@ -119,6 +119,7 @@ if __name__ == '__main__':
 
         a1 = l.lines(4, line_max_width=5)
         a2 = l.texts(4)
-        cv2.imshow('', l.page_mask(4, a1))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+        # cv2.imshow('', l.page_mask(4, [*a1, *a2]))
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+        cv2.imwrite('test.png', l.page_mask(4, [*a1, *a2]) * 255)
