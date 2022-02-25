@@ -14,7 +14,7 @@ class ResStructure(nn.Module):
         from tex.models.transformer.attention import PositionalEncoding
 
         self.enc_net = nn.Sequential(
-            Encoder(d_input=d_input, layers=(2, 3, 5, 3)),
+            Encoder(d_input=d_input, layers=(1, 2, 5, 3)),
             PositionalEncoding(d_model, enc_n_pos),
         )
 

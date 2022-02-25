@@ -43,7 +43,7 @@ class MultiHeadAttention(nn.Module):
             -1, key.size(1), self.n_head, self.d_k).transpose(1, 2)
         value = self.w_vs(value).view(
             -1, value.size(1), self.n_head, self.d_v).transpose(1, 2)
-        if mask is not None: mask = mask.unsqueeze(1)  # [batch_size, 1, sql_len|1, sql_len]
+        if mask is not None: mask = mask.unsqueeze(1)  # [batch_size, 1, seq_len|1, seq_len]
         # Q,K,V: [batch_size, n_head, len_q/k/v, d_q/k/v] mask: [batch_size, 1, len_q, len_k]
         x, attn = self.attention(query, key, value, mask=mask)  # [batch_size, n_head, len_v, d_v]
         x = x.transpose(1, 2)  # [batch_size, len_v, n_head, d_v]
@@ -77,10 +77,10 @@ class AddAndNorm(nn.Module):
 
 class EncodeLayer(nn.Module):
 
-    def __init__(self, d_model, n_head, d_k, d_ffn, d_v=None, dropout=0.1):
+    def __init__(self, d_model, n_head, d_k, d_ffn, dropout=0.1):
         super(EncodeLayer, self).__init__()
         self.slf_atn = MultiHeadAttention(
-            d_model, n_head, d_k, d_k if d_v is None else d_v, dropout=dropout)
+            d_model, n_head, d_k, d_k, dropout=dropout)
         self.fin_ffn = FeedForward(d_model, d_ffn, dropout=dropout)
         self.res_slf = AddAndNorm(d_model)
         self.res_ffn = AddAndNorm(d_model)
@@ -93,12 +93,12 @@ class EncodeLayer(nn.Module):
 
 class DecodeLayer(nn.Module):
 
-    def __init__(self, d_model, n_head, d_k, d_ffn, d_v=None, dropout=0.1):
+    def __init__(self, d_model, n_head, d_k, d_ffn, dropout=0.1):
         super(DecodeLayer, self).__init__()
         self.slf_atn = MultiHeadAttention(
-            d_model, n_head, d_k, d_k if d_v is None else d_v, dropout=dropout)
+            d_model, n_head, d_k, d_k, dropout=dropout)
         self.enc_atn = MultiHeadAttention(
-            d_model, n_head, d_k, d_k if d_v is None else d_v, dropout=dropout)
+            d_model, n_head, d_k, d_k, dropout=dropout)
         self.fin_ffn = FeedForward(d_model, d_ffn, dropout=dropout)
         self.res_slf = AddAndNorm(d_model)
         self.res_enc = AddAndNorm(d_model)
@@ -150,13 +150,13 @@ class PositionalEncoding(nn.Module):
 
 
 def pad_mask(x, pad_idx=0):
-    # [batch_size, sql_len] -> [batch_size, 1, sql_len]
+    # [batch_size, seq_len] -> [batch_size, 1, seq_len]
     return (x != pad_idx).unsqueeze(-2)
 
 
 def subsequent_mask(x):
     """ 对角掩码矩阵 """
-    # [batch_size, sql_len] -> [1, sql_len, sql_len]
+    # [batch_size, seq_len] -> [1, seq_len, seq_len]
     return (torch.tril(torch.ones((1, x.size(1), x.size(1)), device=x.device))).bool()
 
 
