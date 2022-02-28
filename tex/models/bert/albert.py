@@ -32,41 +32,48 @@ class ALBert(nn.Module):
     """ A Lite Bert """
 
     def __init__(self, n_vocab, d_embedding, d_model, n_head, d_k, d_ffn,
-            n_shared_layer=12, n_position=512, pad_idx=0, dropout=0.1):
+            n_layer=12, n_position=512, pad_idx=0, dropout=0.1):
         super(ALBert, self).__init__()
         self.embedding = BertEmbedding(n_vocab, n_position, d_embedding, dropout)
-        self.embedding_mapping = nn.Linear(d_embedding, d_model)
+        if d_embedding == d_model:
+            self.embedding_mapping = nn.Identity()  # d_embedding == d_hidden
+        else:
+            self.embedding_mapping = nn.Linear(d_embedding, d_model)
         self.shared_layer = attention.EncodeLayer(d_model, n_head, d_k, d_ffn, dropout)
-        self.pad_idx, self.n_shared_layer = pad_idx, n_shared_layer
+        self.pad_idx, self.n_layer = pad_idx, n_layer
 
-    def forward(self, sequence, segment_label=None):
+    def forward(self, sequence, segment_label=None, return_all=False):
         mask = attention.pad_mask(sequence, self.pad_idx)
-        output = self.embedding(sequence, segment_label)
-        output = self.embedding_mapping(output)
-        for _ in range(self.n_shared_layer):
-            output = self.shared_layer(output, mask)
-        return output  # [batch_size, n_position, d_model]
+        embedding = self.embedding(sequence, segment_label)
+        layer_outputs = [self.embedding_mapping(embedding)]
+        # output size: [batch_size, n_position, d_model]
+        for _ in range(self.n_layer):
+            layer_outputs.append(
+                self.shared_layer(layer_outputs[-1], mask))
+        return layer_outputs[1:] if return_all else layer_outputs[-1]
 
 
 class ALBertForNSP(nn.Module):
 
     def __init__(self, n_vocab, d_embedding, d_model, n_head, d_k, d_ffn,
-            n_shared_layer=12, n_position=512, pad_idx=0, dropout=0.1):
+            n_layer=12, n_position=512, pad_idx=0, dropout=0.1):
         super(ALBertForNSP, self).__init__()
         self.bert = ALBert(n_vocab, d_embedding, d_model, n_head, d_k, d_ffn,
-            n_shared_layer=n_shared_layer, n_position=n_position, pad_idx=pad_idx, dropout=dropout)
-        self.cls_linear = nn.Linear(d_model, 1)
+            n_layer=n_layer, n_position=n_position, pad_idx=pad_idx, dropout=dropout)
+        self.pool = nn.Linear(d_model, d_model)
+        self.last = nn.Linear(d_model, 1)
 
     def forward(self, sequence, segment_label=None):
         x = self.bert(sequence, segment_label)
-        x = x.index_select(1, torch.tensor(0, device=sequence.device))  # pos:0|[CLS] [bs, 1, dim]
-        return self.cls_linear(x.squeeze(1)).squeeze(1)  # [bs]
+        x = x.index_select(1, torch.tensor(0, device=sequence.device))  # pos:0|[cls] [bs, 1, dim]
+        x = torch.tanh(self.pool(x.squeeze(1)))
+        return torch.sigmoid(self.last(x).squeeze(1))  # [bs]
 
 
 if __name__ == '__main__':
-    nsp = ALBertForNSP(n_vocab=30522, d_embedding=128, d_model=768, n_head=12, d_k=64, d_ffn=3072, n_shared_layer=12)
-    # nsp = ALBertForNSP(n_vocab=30522, d_embedding=128, d_model=4096, n_head=64, d_k=64, d_ffn=16384, n_shared_layer=12)
+    nsp = ALBertForNSP(n_vocab=30000, d_embedding=128, d_model=768, n_head=12, d_k=64, d_ffn=3072, n_layer=12)
+    # nsp = ALBertForNSP(n_vocab=30000, d_embedding=128, d_model=4096, n_head=64, d_k=64, d_ffn=16384, n_layer=12)
     print('model parameters:', sum(x.numel() for x in nsp.parameters()))
-    # x = torch.randint(5000, [3, 512], dtype=torch.long)
-    # x = nsp(x)
-    # print(x.size())
+    x = torch.randint(30000, [3, 512], dtype=torch.long)
+    x = nsp(x)
+    print(x)
