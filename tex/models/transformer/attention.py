@@ -5,7 +5,7 @@ import torch.nn as nn
 class ScaledDotProductAttention(nn.Module):
     """
     Scaled Dot-Product Attention
-    Attention(Q,K,V) = softmax(Q*K.T/sqrt(d_k))
+    Attention(Q,K,V) = softmax(Q*K.T/sqrt(d_k))*V
     """
 
     def __init__(self, dropout=0.1):
@@ -37,14 +37,13 @@ class MultiHeadAttention(nn.Module):
 
     def forward(self, query, key, value, mask=None, return_attn=False):
         # Q,K,V: [batch_size, len_q/k/v, d_model] mask: [batch_size, len_q, len_k]
-        query = self.w_qs(query).view(
+        query = self.w_qs(query).view(  # [batch_size, n_head, len_q, d_k]
             -1, query.size(1), self.n_head, self.d_k).transpose(1, 2)
-        key = self.w_ks(key).view(
+        key = self.w_ks(key).view(  # [batch_size, n_head, len_k, d_k]
             -1, key.size(1), self.n_head, self.d_k).transpose(1, 2)
-        value = self.w_vs(value).view(
+        value = self.w_vs(value).view(  # [batch_size, n_head, len_v, d_v]
             -1, value.size(1), self.n_head, self.d_v).transpose(1, 2)
         if mask is not None: mask = mask.unsqueeze(1)  # [batch_size, 1, seq_len|1, seq_len]
-        # Q,K,V: [batch_size, n_head, len_q/k/v, d_q/k/v] mask: [batch_size, 1, len_q, len_k]
         x, attn = self.attention(query, key, value, mask=mask)  # [batch_size, n_head, len_v, d_v]
         x = x.transpose(1, 2)  # [batch_size, len_v, n_head, d_v]
         x = x.contiguous().view(x.size(0), x.size(1), -1)  # [batch_size, len_v, n_head*d_v]

@@ -65,6 +65,7 @@ class ALBertForNSP(nn.Module):
 
 if __name__ == '__main__':
     nsp = ALBertForNSP(n_vocab=30522, d_embedding=128, d_model=768, n_head=12, d_k=64, d_ffn=3072, n_shared_layer=12)
+    # nsp = ALBertForNSP(n_vocab=30522, d_embedding=128, d_model=4096, n_head=64, d_k=64, d_ffn=16384, n_shared_layer=12)
     print('model parameters:', sum(x.numel() for x in nsp.parameters()))
     # x = torch.randint(5000, [3, 512], dtype=torch.long)
     # x = nsp(x)
