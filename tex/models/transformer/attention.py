@@ -48,7 +48,7 @@ class MultiHeadAttention(nn.Module):
         x = x.transpose(1, 2)  # [batch_size, len_v, n_head, d_v]
         x = x.contiguous().view(x.size(0), x.size(1), -1)  # [batch_size, len_v, n_head*d_v]
         x = self.dropout(self.fc(x))  # [batch_size, len_v, d_model]
-        return (x, attn) if return_attn else x
+        return (x, attn) if return_attn else x  # [batch_size, len_v, d_model]
 
 
 class FeedForward(nn.Module):
