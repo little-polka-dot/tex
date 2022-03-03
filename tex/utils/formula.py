@@ -33,7 +33,7 @@ class Formula(object):
 
     def __call__(self, formula_str: str):
 
-        formula_format = ''.join(formula_str.split())
+        formula = ''.join(formula_str.split())
 
         def match(string):
             for pattern, callback in self.mapping.items():
@@ -48,12 +48,12 @@ class Formula(object):
 
         ops = {'+', '-', '*', '/', '(', ')'}
         formula_list = list()  # 中序列表
-        while formula_format:
-            if formula_format[0] in ops:
-                formula_list.append(formula_format[0])
-                formula_format = formula_format[1:]
+        while formula:
+            if formula[0] in ops:
+                formula_list.append(formula[0])
+                formula = formula[1:]
             else:
-                value, matched, formula_format = match(formula_format)
+                value, matched, formula = match(formula)
                 formula_list.append(value)
 
         op_stack = list()
@@ -100,9 +100,10 @@ class Formula(object):
 
         assert len(po_stack) == 1
 
-        if po_stack:
-            return po_stack.pop()
+        if po_stack: return po_stack.pop()
 
 
 if __name__ == '__main__':
     print(Formula()('1+2*(3-4)/5'))
+    print(Formula()('1/0'))
+    print(Formula()('1/(1/0)'))
