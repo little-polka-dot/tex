@@ -1,6 +1,6 @@
 import re
 from typing import Dict, Callable, Union
-from math import pi, e
+from math import pi, e, inf, nan
 import operator
 
 
@@ -54,7 +54,6 @@ class Formula(object):
                 formula_format = formula_format[1:]
             else:
                 value, matched, formula_format = match(formula_format)
-                if value is None: return None
                 formula_list.append(value)
 
         op_stack = list()
@@ -94,7 +93,7 @@ class Formula(object):
                 try:
                     v = op_dict[i](l_val, r_val)
                 except ZeroDivisionError:
-                    return None
+                    v = inf  # .../0 == inf
                 po_stack.append(v)
             else:
                 po_stack.append(i)
