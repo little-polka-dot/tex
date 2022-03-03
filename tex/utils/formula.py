@@ -105,5 +105,7 @@ class Formula(object):
 
 if __name__ == '__main__':
     print(Formula()('1+2*(3-4)/5'))
+    print(Formula({r"five": lambda s: 5})('1+2*(3-4)/five'))
     print(Formula()('1/0'))
     print(Formula()('1/(1/0)'))
+    print(Formula()('(1/0)/(1/0)'))
