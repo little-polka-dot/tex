@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Union
-from tex.models.transformer import attention
+import tex.models.nlp.transformer as transformer
 from tex.models.backbone import resnet
 from tex.models.backbone import gcnet
 
@@ -135,7 +135,7 @@ class PosEncoder(nn.Module):
             nn.LayerNorm(d_model),
         )  # 该模型不具有平移不变性与尺度不变性
         self.encoders = nn.ModuleList([
-            attention.EncodeLayer(
+            transformer.EncodeLayer(
                 d_model, n_head, d_k, d_ffn, dropout=dropout) for _ in range(layers)
         ])
 

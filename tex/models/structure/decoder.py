@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from tex.models.transformer import attention
+import tex.models.nlp.transformer as transformer
 
 
 class Decoder(nn.Module):
@@ -10,10 +10,10 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
         self.embedding = nn.Embedding(n_vocab, d_model, padding_idx=pad_idx)
         self.dropout = nn.Dropout(dropout)
-        self.pos_enc = attention.PositionalEncoding(d_model, n_position)
+        self.pos_enc = transformer.PositionalEncoding(d_model, n_position)
         self.norm = nn.LayerNorm(d_model)
         self.decoders = nn.ModuleList([
-            attention.DecodeLayer(
+            transformer.DecodeLayer(
                 d_model, n_head, d_k, d_ffn, dropout=dropout) for _ in range(layers)
         ])
         # self.con_fc = nn.Linear(d_model, 1)  # 置信度
@@ -22,8 +22,8 @@ class Decoder(nn.Module):
         self.pad_idx, self.d_model, self.seq_len = pad_idx, d_model, seq_len
 
     def decode(self, dec_input, enc_value, enc_mask=None):
-        slf_m = attention.pad_mask(
-            dec_input, self.pad_idx) & attention.subsequent_mask(dec_input)
+        slf_m = transformer.pad_mask(
+            dec_input, self.pad_idx) & transformer.subsequent_mask(dec_input)
         out_x = self.norm(self.pos_enc(
             self.dropout(self.embedding(dec_input)) * (self.d_model ** 0.5)))
         for layer in self.decoders:

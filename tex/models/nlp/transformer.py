@@ -29,10 +29,10 @@ class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, n_head, d_k, d_v, dropout=0.1):
         super(MultiHeadAttention, self).__init__()
         self.d_k, self.d_v, self.n_head = d_k, d_v, n_head
-        self.w_qs = nn.Linear(d_model, d_k * n_head, bias=False)
-        self.w_ks = nn.Linear(d_model, d_k * n_head, bias=False)
-        self.w_vs = nn.Linear(d_model, d_v * n_head, bias=False)
-        self.fc = nn.Linear(d_v * n_head, d_model, bias=False)
+        self.w_qs = nn.Linear(d_model, d_k * n_head)
+        self.w_ks = nn.Linear(d_model, d_k * n_head)
+        self.w_vs = nn.Linear(d_model, d_v * n_head)
+        self.fc = nn.Linear(d_v * n_head, d_model)
         self.dropout = nn.Dropout(dropout)
         self.attention = ScaledDotProductAttention(dropout)
 

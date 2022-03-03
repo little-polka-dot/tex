@@ -11,7 +11,7 @@ class ResStructure(nn.Module):
 
         from tex.models.structure.encoder import ResEncoder as Encoder
         from tex.models.structure.decoder import Decoder
-        from tex.models.transformer.attention import PositionalEncoding
+        from tex.models.nlp.transformer import PositionalEncoding
 
         self.enc_net = nn.Sequential(
             Encoder(d_input=d_input, layers=(1, 2, 5, 3)),
