@@ -111,7 +111,9 @@ class Loader(object):
             return line, line_list
 
         if combine_lines:
-            lines = [*lines_extractor()]
+            lines = [i for i in lines_extractor()
+                if i[2] - i[0] > line_max_width
+                    or i[3] - i[1] > line_max_width]
             while lines:
                 head, lines = connect_head(lines)
                 yield head
@@ -154,14 +156,20 @@ class Loader(object):
 
 
 if __name__ == '__main__':
-    with Loader(r'E:\Data\source\pdf\广发证券：2021年半年度报告.pdf') as l:
+    with Loader(r'E:\Data\source\pdf\300227 智鹏纺织：2020年半年度报告.pdf') as l:
         # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
-        page = 62
-        for i in l.texts(page, return_text=True):
-            print(i[-1])
-        # a1 = [*l.lines(page, line_max_width=2, combine_lines=True, line_combine_gap=1)]
-        # a2 = [*l.texts(page)]
-        # # for i in range(len(a1)):
-        # cv2.imshow('2', l.mask(page, [*a2]))
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
+        # for page in range(197):
+        #     # for i in l.texts(page, return_text=True):
+        #     #     print(i[-1])
+        #     a1 = [*l.lines(page, line_max_width=2, combine_lines=True, line_combine_gap=1)]
+        #     a2 = [*l.texts(page)]
+        #     print(page, len(a1), len(a2))
+        #     # for i in range(len(a1)):
+        #     # cv2.imshow('2', l.mask(page, [*a1]))
+        #     # cv2.waitKey(0)
+        #     # cv2.destroyAllWindows()
+        page = 31
+        a1 = [*l.lines(page, line_max_width=2, combine_lines=False, line_combine_gap=2)]
+        cv2.imshow('', l.mask(page, a1))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()

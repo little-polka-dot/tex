@@ -65,15 +65,26 @@ class ALBertForNSP(nn.Module):
 
     def forward(self, sequence, segment_label=None):
         x = self.bert(sequence, segment_label)
-        x = x.index_select(1, torch.tensor(0, device=sequence.device))  # pos:0|[cls] [bs, 1, dim]
+        x = x.index_select(1, torch.tensor(0, device=sequence.device))  # [bs, 1, dim]
         x = torch.tanh(self.pool(x.squeeze(1)))
-        return torch.sigmoid(self.last(x).squeeze(1))  # [bs]
+        return torch.sigmoid(self.last(x).squeeze(-1))  # [bs]
 
 
 if __name__ == '__main__':
-    nsp = ALBertForNSP(n_vocab=30000, d_embedding=128, d_model=768, n_head=12, d_k=64, d_ffn=3072, n_layer=12)
-    # nsp = ALBertForNSP(n_vocab=30000, d_embedding=128, d_model=4096, n_head=64, d_k=64, d_ffn=16384, n_layer=12)
-    print('model parameters:', sum(x.numel() for x in nsp.parameters()))
-    x = torch.randint(30000, [3, 512], dtype=torch.long)
-    x = nsp(x)
-    print(x)
+    model = ALBertForNSP(n_vocab=30000, d_embedding=128, d_model=768, n_head=12, d_k=64, d_ffn=3072, n_layer=12)
+    # model = ALBertForNSP(n_vocab=30000, d_embedding=128, d_model=4096, n_head=64, d_k=64, d_ffn=16384, n_layer=12)
+    # print('model parameters:', sum(x.numel() for x in model.parameters()))
+    # x = torch.randint(30000, [3, 512], dtype=torch.long)
+    # x = nsp(x)
+    # print(x)
+    print('bert/embeddings/word_embeddings:', sum(x.numel() for x in model.bert.embedding.token.parameters()))
+    print('bert/embeddings/token_type_embeddings:', sum(x.numel() for x in model.bert.embedding.segment.parameters()))
+    print('bert/embeddings/position_embeddings:', sum(x.numel() for x in model.bert.embedding.position.parameters()))
+    print('bert/embeddings/LayerNorm:', sum(x.numel() for x in model.bert.embedding.norm.parameters()))
+    print('bert/encoder/embedding_hidden_mapping_in:', sum(x.numel() for x in model.bert.embedding_mapping.parameters()))
+    print('bert/encoder/transformer/attention/self:', sum(x.numel() for x in model.bert.shared_layer.slf_atn.parameters()))
+    print('bert/encoder/transformer/LayerNorm_0:', sum(x.numel() for x in model.bert.shared_layer.res_slf.parameters()))
+    print('bert/encoder/transformer/ffn/intermediate/dense/kernel:', sum(x.numel() for x in model.bert.shared_layer.fin_ffn.parameters()))
+    print('bert/encoder/transformer/LayerNorm_1:', sum(x.numel() for x in model.bert.shared_layer.res_ffn.parameters()))
+    print('bert/pooler/dense:', sum(x.numel() for x in model.pool.parameters()))
+

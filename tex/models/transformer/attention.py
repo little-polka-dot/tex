@@ -13,7 +13,8 @@ class ScaledDotProductAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, mask=None):
-        # Q,K,V: [batch_size, n_head, len_q/k/v, d_q/k/v] len_k = len_v; d_q = d_k
+        # Q,K,V: [batch_size, n_head, len_q/k/v, d_q/k/v]
+        # len_k = len_v; d_q = d_k
         score = torch.matmul(
             query, key.transpose(-2, -1)) / (key.size(-1) ** 0.5)
         if mask is not None:
