@@ -79,37 +79,37 @@ class EncodeLayer(nn.Module):
 
     def __init__(self, d_model, n_head, d_k, d_ffn, dropout=0.1):
         super(EncodeLayer, self).__init__()
-        self.slf_atn = MultiHeadAttention(
+        self.atn = MultiHeadAttention(
             d_model, n_head, d_k, d_k, dropout=dropout)
-        self.fin_ffn = FeedForward(d_model, d_ffn, dropout=dropout)
-        self.res_slf = AddAndNorm(d_model)
-        self.res_ffn = AddAndNorm(d_model)
+        self.ffn = FeedForward(d_model, d_ffn, dropout=dropout)
+        self.add_1 = AddAndNorm(d_model)
+        self.add_2 = AddAndNorm(d_model)
 
     def forward(self, enc_input, enc_mask=None):
-        enc_o = self.res_slf(
-            enc_input, lambda x: self.slf_atn(x, x, x, enc_mask))
-        return self.res_ffn(enc_o, self.fin_ffn)
+        enc_o = self.add_1(
+            enc_input, lambda x: self.atn(x, x, x, enc_mask))
+        return self.add_2(enc_o, self.ffn)
 
 
 class DecodeLayer(nn.Module):
 
     def __init__(self, d_model, n_head, d_k, d_ffn, dropout=0.1):
         super(DecodeLayer, self).__init__()
-        self.slf_atn = MultiHeadAttention(
+        self.atn_1 = MultiHeadAttention(
             d_model, n_head, d_k, d_k, dropout=dropout)
-        self.enc_atn = MultiHeadAttention(
+        self.atn_2 = MultiHeadAttention(
             d_model, n_head, d_k, d_k, dropout=dropout)
-        self.fin_ffn = FeedForward(d_model, d_ffn, dropout=dropout)
-        self.res_slf = AddAndNorm(d_model)
-        self.res_enc = AddAndNorm(d_model)
-        self.res_ffn = AddAndNorm(d_model)
+        self.ffn = FeedForward(d_model, d_ffn, dropout=dropout)
+        self.add_1 = AddAndNorm(d_model)
+        self.add_2 = AddAndNorm(d_model)
+        self.add_3 = AddAndNorm(d_model)
 
     def forward(self, dec_i, enc_o, slf_mask=None, enc_mask=None):
-        dec_o = self.res_slf(
-            dec_i, lambda dec_x: self.slf_atn(dec_x, dec_x, dec_x, mask=slf_mask))
-        dec_o = self.res_enc(
-            dec_o, lambda dec_x: self.enc_atn(dec_x, enc_o, enc_o, mask=enc_mask))
-        return self.res_ffn(dec_o, self.fin_ffn)
+        dec_o = self.add_1(
+            dec_i, lambda dec_x: self.atn_1(dec_x, dec_x, dec_x, mask=slf_mask))
+        dec_o = self.add_2(
+            dec_o, lambda dec_x: self.atn_2(dec_x, enc_o, enc_o, mask=enc_mask))
+        return self.add_3(dec_o, self.ffn)
 
 
 class PositionalEncoding(nn.Module):
