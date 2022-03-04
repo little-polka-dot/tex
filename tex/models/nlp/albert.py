@@ -28,7 +28,7 @@ class BertEmbedding(nn.Module):
         )
 
 
-class ALBert(nn.Module):
+class ALBert(nn.Module):  # warm-up和realformer技巧在albert里似乎不需要用到
     """ A Lite Bert """
 
     def __init__(self, n_vocab, d_embedding, d_model, n_head, d_k, d_ffn,
