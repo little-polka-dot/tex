@@ -22,6 +22,8 @@ class Loader(object):
     def close(self):
         self._document.close()
 
+    def page(self, p): return self._document[p]
+
     def screenshot(self, path='screenshot.png', page=0, clip=None, ampl=(1, 1)):
         mat = fitz.Matrix(*ampl)  # 放大系数
         if clip is None:
@@ -66,8 +68,8 @@ class Loader(object):
                                     if in_color(path['color']) or in_color(path['fill']):
                                         yield x0, y0, x1, y1
                                 else:
-                                    if in_color(path['color']) or \
-                                            path['color'] is None and path['fill']:
+                                    if path['width'] > 0 and (in_color(path['color']) or
+                                            path['color'] is None and path['fill']):
                                         # 具有填充颜色的矩形区域的四条边也作为有效的表格线条
                                         # TODO 边框颜色不满足条件时填充颜色也需要条件筛选
                                         yield x0, y0, x0 + path['width'], y1
@@ -156,7 +158,7 @@ class Loader(object):
 
 
 if __name__ == '__main__':
-    with Loader(r'E:\Data\source\pdf\300227 智鹏纺织：2020年半年度报告.pdf') as l:
+    with Loader(r'F:\PDF\智云股份：2020年年度报告.pdf') as l:
         # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
         # for page in range(197):
         #     # for i in l.texts(page, return_text=True):
@@ -168,8 +170,20 @@ if __name__ == '__main__':
         #     # cv2.imshow('2', l.mask(page, [*a1]))
         #     # cv2.waitKey(0)
         #     # cv2.destroyAllWindows()
-        page = 31
+        page = 94
         a1 = [*l.lines(page, line_max_width=2, combine_lines=False, line_combine_gap=2)]
+        a2 = [*l.texts(page, return_text=True)]
         cv2.imshow('', l.mask(page, a1))
         cv2.waitKey(0)
         cv2.destroyAllWindows()
+
+    # fitz.TOOLS.set_small_glyph_heights(True)
+    # document = fitz.Document(r'F:\PDF\重庆银行：2021年半年度报告.pdf')
+    # page = document[120]
+    # lp = page.get_drawings()
+    # op = page.get_cdrawings()
+    # tp = page.get_textpage()
+    # a = tp.extractWORDS()
+    # b = tp.extractDICT()
+    # c = tp.extractRAWDICT()
+    # print()
