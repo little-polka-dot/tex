@@ -250,44 +250,49 @@ class Formula(object):
         self.pa_registry = sorted(self.PaRegistry, key=lambda x: len(x.head.name), reverse=True)
         self.op_registry = sorted(self.OpRegistry, key=lambda x: len(x.name), reverse=True)
 
-    def leftmost_match(self, string, matched, pa_stack):
-        """ 括号 > 运算符 > 自定义值匹配 > 默认值匹配 """
-
-        # 可以根据上一个匹配到的值来判断当前位置是否满足括号头尾的条件
-        head_matched = matched is None or \
-            isinstance(matched, (BiOperator, Parentheses.Head))
-        tail_matched = not head_matched
-
-        if tail_matched and pa_stack:
-            if string.startswith(pa_stack[-1].tail.name):
-                i = pa_stack.pop()
-                return i, string[len(i.tail.name):]
-
-        if head_matched:
-            for i in self.pa_registry:
-                if string.startswith(i.head.name):
-                    pa_stack.append(i)
-                    return i.head, string[len(i.head.name):]
-
-        for i in self.op_registry:
-            if string.startswith(i.name):
-                return i, string[len(i.name):]
-
-        for p, i in self.value_rules:  # 匹配数值
-            _matched = re.match(p, string)
-            if _matched:
-                value = _matched.group()
-                if value:
-                    return i(value), string[len(value):]
-                else:
-                    raise EmptyStringMatched(p)
-
-        raise UndefinedSymbol(string)  # 未找到匹配的规则
-
     def match(self, string):
-        matched, pa_stack = None, list()  # 临时存放括号
+
+        begin = object()  # 表示表达式的开始
+
+        def leftmost_match(s, m, stack):
+            """ 括号 > 运算符 > 自定义值匹配 > 默认值匹配 """
+
+            # 可以根据上一个匹配到的值来判断当前位置是否满足括号头尾的条件
+            head_matched = m is begin or isinstance(
+                m, (BiOperator, Parentheses.Head))  # (  +(  ((
+            tail_matched = not head_matched  # n)  ++)  ))
+
+            if tail_matched and stack:
+                if s.startswith(stack[-1].tail.name):
+                    i = stack.pop()
+                    return i, s[len(i.tail.name):]
+
+            if head_matched:
+                for i in self.pa_registry:
+                    if s.startswith(i.head.name):
+                        stack.append(i)
+                        return i.head, s[len(i.head.name):]
+
+            if tail_matched:  # 位置同括号结束符
+                for i in self.op_registry:
+                    if s.startswith(i.name):
+                        return i, s[len(i.name):]
+
+            if head_matched:  # 位置同括号开始符
+                for p, i in self.value_rules:  # 匹配数值
+                    _matched = re.match(p, s)
+                    if _matched:
+                        value = _matched.group()
+                        if value:
+                            return i(value), s[len(value):]
+                        else:
+                            raise EmptyStringMatched(p)
+
+            raise UndefinedSymbol(s)  # 未找到匹配的规则
+
+        matched, pa_stack = begin, list()  # 临时存放括号
         while string:
-            matched, string = self.leftmost_match(string, matched, pa_stack)
+            matched, string = leftmost_match(string, matched, pa_stack)
             yield matched
         if pa_stack:  # 发现未结束的括号
             raise SymbolNotFound(pa_stack[-1].tail.name)
