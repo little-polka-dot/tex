@@ -16,7 +16,9 @@ def thread_method():
     return f'sleep({globals()["__sleep__"]})'
 
 
-async def main(lp):
+async def main():
+    lp = asyncio.get_event_loop()
+    print(id(lp))
     return await lp.run_in_executor(pool, thread_method)
 
 
@@ -25,10 +27,12 @@ if __name__ == '__main__':
     mp.set_start_method('spawn')  # cuda要求的进程启动方式
     print(os.cpu_count(), os.getpid())
     pool = concurrent.futures.ProcessPoolExecutor(2)
-    loop = asyncio.get_event_loop()
 
-    work = asyncio.wait([main(loop), main(loop), main(loop), main(loop)])
-    print(loop.run_until_complete(work))
+    work = asyncio.wait([main(), main(), main(), main()])
+
+    lp = asyncio.get_event_loop()
+    print(id(lp))
+    print(lp.run_until_complete(work))
 
 
 

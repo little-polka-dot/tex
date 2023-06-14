@@ -158,24 +158,24 @@ class Loader(object):
 
 
 if __name__ == '__main__':
-    with Loader(r'F:\PDF\智云股份：2020年年度报告.pdf') as l:
-        # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
-        # for page in range(197):
-        #     # for i in l.texts(page, return_text=True):
-        #     #     print(i[-1])
-        #     a1 = [*l.lines(page, line_max_width=2, combine_lines=True, line_combine_gap=1)]
-        #     a2 = [*l.texts(page)]
-        #     print(page, len(a1), len(a2))
-        #     # for i in range(len(a1)):
-        #     # cv2.imshow('2', l.mask(page, [*a1]))
-        #     # cv2.waitKey(0)
-        #     # cv2.destroyAllWindows()
-        page = 94
-        a1 = [*l.lines(page, line_max_width=2, combine_lines=False, line_combine_gap=2)]
-        a2 = [*l.texts(page, return_text=True)]
-        cv2.imshow('', l.mask(page, a1))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    # with Loader(r'F:\PDF\智云股份：2020年年度报告.pdf') as l:
+    #     # debug_bbox(l.W(5), l.H(5), list(l.lines(5)) + list(l.texts(5)))
+    #     # for page in range(197):
+    #     #     # for i in l.texts(page, return_text=True):
+    #     #     #     print(i[-1])
+    #     #     a1 = [*l.lines(page, line_max_width=2, combine_lines=True, line_combine_gap=1)]
+    #     #     a2 = [*l.texts(page)]
+    #     #     print(page, len(a1), len(a2))
+    #     #     # for i in range(len(a1)):
+    #     #     # cv2.imshow('2', l.mask(page, [*a1]))
+    #     #     # cv2.waitKey(0)
+    #     #     # cv2.destroyAllWindows()
+    #     page = 94
+    #     a1 = [*l.lines(page, line_max_width=2, combine_lines=False, line_combine_gap=2)]
+    #     a2 = [*l.texts(page, return_text=True)]
+    #     cv2.imshow('', l.mask(page, a1))
+    #     cv2.waitKey(0)
+    #     cv2.destroyAllWindows()
 
     # fitz.TOOLS.set_small_glyph_heights(True)
     # document = fitz.Document(r'F:\PDF\重庆银行：2021年半年度报告.pdf')
@@ -187,3 +187,20 @@ if __name__ == '__main__':
     # b = tp.extractDICT()
     # c = tp.extractRAWDICT()
     # print()
+
+    def bookmark(*args, **kwargs):
+        with fitz.Document(*args, **kwargs) as doc:
+            outline = doc.outline
+            while outline:
+                yield outline.title, outline.page
+                outline = outline.next
+
+    # with fitz.Document(r'F:\PDF\2022年報.pdf') as doc:
+    #     print(doc.outline.title)
+    #     print(doc.outline.next.title)
+    #     print(doc.outline.next.next.title)
+    #     print(doc.outline.next.next.next.title)
+
+    for i in bookmark(r'F:\PDF\2022年報.pdf'):
+        print(i)
+

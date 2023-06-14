@@ -3,6 +3,7 @@ import numpy as np
 import cv2
 import math
 import enum
+from collections import defaultdict
 
 
 class Color(object):
@@ -101,7 +102,7 @@ class Angle(Point):
 
 class Rectangle(object):
 
-    def __init__(self, left, top, right, bottom):
+    def __init__(self, left=0, top=0, right=0, bottom=0):
         assert right >= left and bottom >= top
         self._rect = (left, top, right, bottom)
 
@@ -192,6 +193,21 @@ class Rectangle(object):
 
     minimum_bounding_rectangle = MBR = mbr
 
+    def is_horizontal(self):
+        return not math.isclose(self.width, self.height) and self.width > self.height
+
+    def is_vertical(self):
+        return not math.isclose(self.width, self.height) and self.width < self.height
+
+    def __contains__(self, item):
+        return self.left <= item.left and self.right >= item.right and \
+               self.top <= item.top and self.bottom >= item.bottom
+
+    contains = __contains__
+
+
+class DocumentLine(Rectangle):
+
     def horizontal_closer(self, rect, max_gap=0, max_distance=None):
         return abs(self.top - rect.top) <= max_gap and abs(self.bottom - rect.bottom) <= max_gap and \
             (max_distance is None or self.min_distance_x(rect) <= max_distance)
@@ -207,12 +223,6 @@ class Rectangle(object):
     def line_vertical_closer(self, rect, max_gap=0, max_distance=None):
         return self.is_vertical() and rect.is_vertical() and self.min_distance_x(rect) <= max_gap and \
             (max_distance is None or self.min_distance_y(rect) <= max_distance)
-
-    def is_horizontal(self):
-        return self.width > self.height
-
-    def is_vertical(self):
-        return self.width < self.height
 
     def line_combine(self, rect, max_gap=0, max_distance=None):
         """ 适用于直线矩形区域之间的合并 """
@@ -253,21 +263,58 @@ class Rectangle(object):
 # 3 计算合并后的线条之间的交点 由此得到单元格区域信息
 
 
+class DocumentFill(object):
+
+    def __init__(self, area, fill):
+        self._area = area  # 该对象须支持contains方法
+        self._fill = fill  # Color对象
+
+    @property
+    def fill(self): return self._fill
+
+    @property
+    def area(self): return self._area
+
+    def background(self, other):
+        """ 判断当前区域是否为其他区域的背景 如果是则返回当前区域的填充颜色 """
+        if self.area.contains(other.area):
+            return self.fill
+
+    def is_hidden(self, other):
+        """ 判断当前区域的颜色是否被其他区域隐藏(颜色相同) 返回true时表示当前区域不可见"""
+        return self.fill == other.fill and other.area.contains(self.area)
+
+    def cover(self, other):
+        pass
+
+
+class DocumentViewer(object):
+
+    def __init__(self, width, height, background=None):
+        if not isinstance(background, Color):
+            background = Color.from_hex_8bit('0xffffff')
+        self.background = DocumentFill(
+            Rectangle(0, 0, width, height), background)
+        self._sorted_fills = defaultdict(list)
+
+    def add(self, index: int, fill: DocumentFill):
+        pass
 
 
 
 if __name__ == '__main__':
-    bg = np.zeros((500, 500, 3))
-    b = Rectangle(50, 10, 60, 300)
-    a = Rectangle(20, 260, 200, 270)
-    bg = cv2.rectangle(bg, (a.left, a.top), (a.right, a.bottom), (255, 0, 0))
-    bg = cv2.rectangle(bg, (b.left, b.top), (b.right, b.bottom), (255, 0, 0))
-    c = a.line_intersect(b, 5)
-    if c:
-        bg = cv2.rectangle(bg, (int(c.left), int(c.top)), (int(c.right), int(c.bottom)), (0, 0, 255))
-    cv2.imshow('', bg)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # bg = np.zeros((500, 500, 3))
+    # b = DocumentLine(50, 10, 60, 300)
+    # a = DocumentLine(20, 260, 200, 270)
+    # bg = cv2.rectangle(bg, (a.left, a.top), (a.right, a.bottom), (255, 0, 0))
+    # bg = cv2.rectangle(bg, (b.left, b.top), (b.right, b.bottom), (255, 0, 0))
+    # c = a.line_intersect(b, 5)
+    # if c:
+    #     bg = cv2.rectangle(bg, (int(c.left), int(c.top)), (int(c.right), int(c.bottom)), (0, 0, 255))
+    # cv2.imshow('', bg)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
     # bg = np.zeros((500, 500, 3))
     # a = Rectangle(50, 50, 200, 100)
     # b = Rectangle(300, 100, 450, 150)
@@ -279,3 +326,5 @@ if __name__ == '__main__':
     # cv2.imshow('', bg)
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
+
+    print(Rectangle(1, 1, 3, 3) in Rectangle(0, 0, 4, 4))
