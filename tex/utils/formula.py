@@ -33,6 +33,7 @@ class Parentheses(object):
     class Head(object):
 
         def __init__(self, name):
+            assert len(name) > 0
             self._name = name
 
         def __str__(self): return self._name
@@ -82,9 +83,9 @@ class Parentheses(object):
 
 class Operator(object):
 
-    def __init__(self, priority, name, call, n=0):
-        assert n in (1, 2)
-        self._operator_n = n
+    _operator_n = 0
+
+    def __init__(self, priority, name, call):
         assert priority > 0
         self._priority = priority
         assert len(name) > 0
@@ -114,16 +115,12 @@ class Operator(object):
 
 class UnOperator(Operator):
     """ 单目运算符 示例：UnOperator('++', lambda x: x + 1) """
-
-    def __init__(self, priority, name, call):
-        super().__init__(priority, name, call, n=1)
+    _operator_n = 1
 
 
 class BiOperator(Operator):
     """ 双目运算符 示例：BiOperator(10, '+', lambda a, b: a + b) """
-
-    def __init__(self, priority, name, call):
-        super().__init__(priority, name, call, n=2)
+    _operator_n = 2
 
 
 class Formula(object):

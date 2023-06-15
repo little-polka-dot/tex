@@ -178,22 +178,22 @@ if __name__ == '__main__':
     #     cv2.destroyAllWindows()
 
     # fitz.TOOLS.set_small_glyph_heights(True)
-    # document = fitz.Document(r'F:\PDF\重庆银行：2021年半年度报告.pdf')
-    # page = document[120]
+    document = fitz.Document(r'F:\Docs\bj_s3\江西铜业集团有限公司2023年度第五期超短期融资券募集说明书.pdf')
+    page = document[157]
     # lp = page.get_drawings()
     # op = page.get_cdrawings()
-    # tp = page.get_textpage()
-    # a = tp.extractWORDS()
+    tp = page.get_textpage()
+    a = tp.extractWORDS()
     # b = tp.extractDICT()
     # c = tp.extractRAWDICT()
-    # print()
+    print(a)
 
-    def bookmark(*args, **kwargs):
-        with fitz.Document(*args, **kwargs) as doc:
-            outline = doc.outline
-            while outline:
-                yield outline.title, outline.page
-                outline = outline.next
+    # def bookmark(*args, **kwargs):
+    #     with fitz.Document(*args, **kwargs) as doc:
+    #         outline = doc.outline
+    #         while outline:
+    #             yield outline.title, outline.page
+    #             outline = outline.next
 
     # with fitz.Document(r'F:\PDF\2022年報.pdf') as doc:
     #     print(doc.outline.title)
@@ -201,6 +201,6 @@ if __name__ == '__main__':
     #     print(doc.outline.next.next.title)
     #     print(doc.outline.next.next.next.title)
 
-    for i in bookmark(r'F:\PDF\2022年報.pdf'):
-        print(i)
+    # for i in bookmark(r'F:\PDF\2022年報.pdf'):
+    #     print(i)
 
